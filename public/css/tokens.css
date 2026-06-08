@@ -1,0 +1,77 @@
+/* 小白兔TKNC design tokens — dark theme, inspired by TuziAI but distinct accents */
+:root {
+  /* Backgrounds */
+  --bg: #0a0e1a;
+  --bg-elevated: #111827;
+  --panel: #1a2234;
+  --panel-2: #232c42;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  /* Text */
+  --text: #e6ebf5;
+  --text-muted: #8b95ab;
+  --text-dim: #5a647a;
+
+  /* Brand */
+  --brand: #00d4ff;
+  --brand-2: #7c5cff;
+  --brand-gradient: linear-gradient(135deg, #00d4ff 0%, #7c5cff 100%);
+
+  /* Status / tier colors */
+  --tier-excellent: #10b981;   /* 90-100 green  */
+  --tier-good: #facc15;        /* 70-89  yellow */
+  --tier-warning: #f97316;     /* 50-69  orange */
+  --tier-danger: #ef4444;      /* 0-49   red    */
+
+  /* Semantic */
+  --ok: #10b981;
+  --warn: #facc15;
+  --danger: #ef4444;
+  --info: #3b82f6;
+
+  /* Spacing scale */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  /* Radius */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 24px rgba(0, 212, 255, 0.25);
+
+  /* Type */
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 20px;
+  --fs-2xl: 28px;
+  --fs-3xl: 40px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
+  --dur-slow: 500ms;
+
+  /* Safe area for iOS notch */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}

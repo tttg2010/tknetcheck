@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0e1a">
+  <title>小白兔TKNC · 30 秒查出你 TikTok 0 播放的网络真相</title>
+  <meta name="description" content="专为 TikTok 养号场景设计：30 秒检测 IP 质量、DNS、WebRTC 泄漏、网络稳定性等 6 项维度，给出 0-100 分体检报告与改进建议。">
+  <!-- Open Graph — controls the preview card when pasted into 微信 / 抖音 / QQ -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="30 秒查出你 TikTok 0 播放的网络真相">
+  <meta property="og:description" content="内容一样，别人爆你 0 播放？问题可能在网络环境。6 项维度，30 秒出体检报告 👇">
+  <meta property="og:image" content="og.png">
+  <meta property="og:site_name" content="小白兔TKNC">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/report.css">
+</head>
+<body>
+  <main class="app">
+
+    <!-- ───────── Phase 1: Landing ───────── -->
+    <section id="phase-landing" class="phase">
+      <header class="brand-chip">
+        <span class="brand-mark">🐰</span>
+        <span>小白兔TKNC</span>
+      </header>
+
+      <div class="hero">
+        <div class="hero-badge">🎯 专为 TikTok 养号场景设计</div>
+        <h1>30 秒查出<br>你 TikTok 0 播放的<br>网络层真相</h1>
+        <p>内容一样，别人爆你 0 播放？<br>问题可能不在内容，在<strong>网络环境</strong>。</p>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat"><div class="stat-num">6</div><div class="stat-label">检测维度</div></div>
+        <div class="stat"><div class="stat-num">30s</div><div class="stat-label">出体检报告</div></div>
+        <div class="stat"><div class="stat-num">0-100</div><div class="stat-label">一眼看懂的分</div></div>
+      </div>
+
+      <ul class="feature-list" aria-label="检测项">
+        <li><span class="fi">🌐</span><div><div class="ft">IP 身份</div><div class="fd">机房 IP 还是住宅 IP，ASN 与风险评分</div></div></li>
+        <li><span class="fi">🧭</span><div><div class="ft">DNS 检测</div><div class="fd">DoH 跨源对比 + 时区交叉校验</div></div></li>
+        <li><span class="fi">🛰️</span><div><div class="ft">WebRTC / IPv6 泄漏</div><div class="fd">代理有没有暴露你的真实 IP</div></div></li>
+        <li><span class="fi">📈</span><div><div class="ft">网络稳定性</div><div class="fd">30 秒持续采样：延迟、抖动、丢包</div></div></li>
+        <li><span class="fi">📱</span><div><div class="ft">设备一致性</div><div class="fd">时区/语言/指纹与 IP 是否对得上</div></div></li>
+        <li><span class="fi">🎯</span><div><div class="ft">TikTok 可达性</div><div class="fd">直接探测官方域名通不通</div></div></li>
+      </ul>
+
+      <div class="consent-bar">
+        <label class="check">
+          <input type="checkbox" id="consent">
+          <span>同意检测会查询第三方 IP 信息服务。<strong>不存储你的原始 IP</strong>，仅匿名保留派生指标 7 天用于分享。</span>
+        </label>
+      </div>
+
+      <div class="sticky-cta">
+        <button id="btn-start" class="btn btn-primary btn-lg btn-block" disabled>
+          开始检测 · 30 秒出报告
+        </button>
+        <p class="cta-hint">请用<strong>需要检测的那台手机</strong>、连<strong>需要检测的那个网络</strong>打开</p>
+      </div>
+    </section>
+
+    <!-- ───────── Phase 2: Progress ───────── -->
+    <section id="phase-progress" class="phase" hidden>
+      <header class="brand-chip mb-4">
+        <span class="brand-mark">🐰</span>
+        <span>小白兔TKNC</span>
+      </header>
+
+      <div class="score-circle-wrap">
+        <div class="score-circle indeterminate" id="progress-ring">
+          <svg width="180" height="180" viewBox="0 0 180 180">
+            <circle class="bg-ring" cx="90" cy="90" r="80" stroke-width="10" fill="none"/>
+            <circle class="fg-ring" cx="90" cy="90" r="80" stroke-width="10" fill="none"/>
+          </svg>
+          <div class="score-value">
+            <div class="num" id="progress-count">0</div>
+            <div class="grade">/ 6 模块</div>
+          </div>
+        </div>
+      </div>
+
+      <p class="status-line" id="status-line">正在准备<span class="dots"></span></p>
+
+      <ol class="module-list" id="module-list">
+        <li class="module-row" data-module="ip">
+          <span class="module-icon">🌐</span>
+          <span class="module-name">IP 身份</span>
+          <span class="module-state" data-state="pending">等待</span>
+        </li>
+        <li class="module-row" data-module="dns">
+          <span class="module-icon">🧭</span>
+          <span class="module-name">DNS</span>
+          <span class="module-state" data-state="pending">等待</span>
+        </li>
+        <li class="module-row" data-module="webrtc">
+          <span class="module-icon">🛰️</span>
+          <span class="module-name">WebRTC / IPv6 泄漏</span>
+          <span class="module-state" data-state="pending">等待</span>
+        </li>
+        <li class="module-row" data-module="stability">
+          <span class="module-icon">📈</span>
+          <span class="module-name">网络稳定性（30s）</span>
+          <span class="module-state" data-state="pending">等待</span>
+        </li>
+        <li class="module-row" data-module="device">
+          <span class="module-icon">📱</span>
+          <span class="module-name">设备一致性</span>
+          <span class="module-state" data-state="pending">等待</span>
+        </li>
+        <li class="module-row" data-module="reachability">
+          <span class="module-icon">🎯</span>
+          <span class="module-name">TikTok 可达性</span>
+          <span class="module-state" data-state="pending">等待</span>
+        </li>
+      </ol>
+
+      <div class="center mt-5">
+        <button id="btn-cancel" class="btn btn-ghost">取消检测</button>
+      </div>
+    </section>
+
+    <!-- ───────── Phase 3: Report ───────── -->
+    <section id="phase-report" class="phase" hidden>
+      <!-- Screenshot-friendly card: brand + score + verdict stay together -->
+      <div class="report-hero" id="report-hero">
+        <header class="brand-chip mb-3">
+          <span class="brand-mark">🐰</span>
+          <span>小白兔TKNC</span>
+          <span class="brand-tag">网络体检报告</span>
+        </header>
+
+        <div class="score-circle-wrap">
+          <div class="score-circle" id="overall-ring">
+            <svg width="180" height="180" viewBox="0 0 180 180">
+              <circle class="bg-ring" cx="90" cy="90" r="80" stroke-width="10" fill="none"/>
+              <circle class="fg-ring" cx="90" cy="90" r="80" stroke-width="10" fill="none"
+                      stroke-dasharray="502.65" stroke-dashoffset="502.65"/>
+            </svg>
+            <div class="score-value">
+              <div class="num" id="overall-score">--</div>
+              <div class="grade">总分</div>
+            </div>
+          </div>
+          <div class="tier-label" id="overall-tier-label">--</div>
+          <p class="verdict-line" id="verdict-line">--</p>
+          <div class="report-meta" id="report-meta">--</div>
+        </div>
+      </div>
+
+      <div id="report-sections"></div>
+
+      <!-- Share block — the social-promotion core -->
+      <div class="share-block">
+        <div class="share-hint" id="share-hint">📸 截图本页即可分享，或生成专属链接</div>
+        <div class="report-actions">
+          <button id="btn-share" class="btn btn-primary btn-block">生成我的分享报告</button>
+        </div>
+        <div id="share-result" class="share-result" hidden>
+          <div class="share-copy-box" id="share-copy-text"></div>
+          <div class="share-btn-row">
+            <button id="btn-copy-copy" class="btn btn-primary">复制分享文案</button>
+            <button id="btn-copy-link" class="btn btn-secondary">复制链接</button>
+          </div>
+          <div class="share-expiry" id="share-expiry">分享链接 7 天内有效</div>
+        </div>
+        <button id="btn-rerun" class="btn btn-ghost btn-block mt-3">重新检测</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- App entry (ES modules). Cloud functions are called via HTTP Access Service,
+       no CloudBase SDK needed. -->
+  <script type="module" src="app/app.js"></script>
+</body>
+</html>

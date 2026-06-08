@@ -1,0 +1,13 @@
+{
+  "envId": "tk-netcheck-prod-d8es2vm0d40fecd",
+  "hosting": {
+    "root": "public",
+    "ignore": ["**/*.md", "**/.DS_Store"]
+  },
+  "functions": [
+    "ipinfo",
+    "saveReport",
+    "getReport",
+    "cleanupReports"
+  ]
+}

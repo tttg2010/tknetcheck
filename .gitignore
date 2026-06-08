@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+*.log
+*.bak*
+.DS_Store
+.cloudbase/
+.tcb/
+dist/
+.idea/
+.vscode/

@@ -1,0 +1,49 @@
+{
+  "version": "2.0",
+  "envId": "tk-netcheck-prod-d8es2vm0d40fecd",
+  "functionRoot": "./cloudfunctions",
+  "functions": [
+    {
+      "name": "ipinfo",
+      "timeout": 15,
+      "runtime": "Nodejs16.13",
+      "memorySize": 256,
+      "installDependency": true,
+      "handler": "index.main",
+      "envVariables": {
+        "IPINFO_TOKEN": "YOUR_IPINFO_TOKEN"
+      }
+    },
+    {
+      "name": "saveReport",
+      "timeout": 5,
+      "runtime": "Nodejs16.13",
+      "memorySize": 128,
+      "installDependency": true,
+      "handler": "index.main"
+    },
+    {
+      "name": "getReport",
+      "timeout": 5,
+      "runtime": "Nodejs16.13",
+      "memorySize": 128,
+      "installDependency": true,
+      "handler": "index.main"
+    },
+    {
+      "name": "cleanupReports",
+      "timeout": 60,
+      "runtime": "Nodejs16.13",
+      "memorySize": 128,
+      "installDependency": true,
+      "handler": "index.main",
+      "triggers": [
+        {
+          "name": "daily-cleanup",
+          "type": "timer",
+          "config": "0 0 3 * * * *"
+        }
+      ]
+    }
+  ]
+}

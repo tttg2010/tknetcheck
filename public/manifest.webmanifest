@@ -1,0 +1,18 @@
+{
+  "name": "小白兔TKNC",
+  "short_name": "小白兔TKNC",
+  "description": "TikTok 网络环境体检工具",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0a0e1a",
+  "theme_color": "#0a0e1a",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
