@@ -74,10 +74,11 @@
   ]
 }
 </script>
-<link rel="stylesheet" href="css/tokens.css">
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/components.css">
-<link rel="stylesheet" href="css/report.css">
+<!-- 资源版本号：改了 css/js 就 +1，绕过 CloudFlare 边缘缓存（index.html 本身不被 CF 缓存，改动即刻生效） -->
+<link rel="stylesheet" href="css/tokens.css?v=2">
+<link rel="stylesheet" href="css/base.css?v=2">
+<link rel="stylesheet" href="css/components.css?v=2">
+<link rel="stylesheet" href="css/report.css?v=2">
 </head>
 <body>
 
@@ -109,6 +110,9 @@
     <div class="eyebrow">TIKTOK 网络环境 · <b>诊断仪</b></div>
     <h1 class="headline">30 秒查出你 TikTok<br><span class="hl">0 播放的网络真相</span></h1>
     <p class="subline">内容一样，别人爆你 0 播放？问题可能不在内容，在<b>网络环境</b>。</p>
+
+    <!-- 社会证明气泡：随机滚动"网友刚测出 XX 分"，检测中/报告态由 CSS 自动隐藏 -->
+    <div class="live-ticker" id="liveTicker" aria-hidden="true"></div>
 
     <div class="gauge-wrap">
       <div class="gauge">
@@ -257,6 +261,6 @@
   </div>
 </div>
 
-<script type="module" src="app/app.js"></script>
+<script type="module" src="app/app.js?v=2"></script>
 </body>
 </html>

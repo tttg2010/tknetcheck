@@ -24,6 +24,7 @@ import { startScan, markScanRow, creepGauge, showReport, resetConsole } from './
 import { renderReport } from './ui/report.js';
 import { mountSponsors } from './ui/sponsors.js';
 import { mountWechat, mountFaq, copyText } from './ui/wechat.js';
+import { mountLiveTicker } from './ui/liveticker.js';
 
 const CFG = resolveConfig();
 
@@ -239,6 +240,7 @@ function bootstrap() {
   const wx = mountWechat();
   mountFaq();
   mountSponsors({ onEmptyClick: wx && wx.open });
+  mountLiveTicker();
 
   document.getElementById('btnStart').onclick = start;
   document.getElementById('btnCancel').onclick = cancel;
