@@ -1,0 +1,19 @@
+[Unit]
+Description=netcheck-api (小白兔TKNC self-hosted backend)
+After=network.target
+
+[Service]
+Type=simple
+Environment=PORT=8096
+Environment=STORE_DIR=/var/lib/netcheck/reports
+# 可选：设了才启用 ipinfo.io 增强 / scamalytics 风险分。留空则仅用 ip-api.com（够用）。
+Environment=IPINFO_TOKEN=
+# Environment=SCAMALYTICS_USER=
+# Environment=SCAMALYTICS_KEY=
+ExecStart=/usr/bin/node /opt/netcheck-api/server.js
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target

@@ -6,7 +6,7 @@
 // proxy's IP — exactly what we want), then pass it to the cloud function for
 // enrichment (ASN, hosting flag, risk score via token-protected APIs).
 
-import { api } from '../api.js';
+import { api } from '../api.js?v=3';
 
 // CORS-friendly public-IP echo services. Tried in order until one works.
 const IP_ECHO_SERVICES = [

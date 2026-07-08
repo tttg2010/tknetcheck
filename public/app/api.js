@@ -1,34 +1,11 @@
-// Cloud function calls via CloudBase HTTP Access Service.
+// 后端调用 —— 同源自托管后端（nginx 反代 /api/ → 本机 netcheck-api 服务）。
 //
-// We deliberately do NOT use the CloudBase JS SDK / callFunction:
-// this CloudBase edition does not let anonymous users invoke functions through
-// callFunction (PERMISSION_DENIED). Instead each function is exposed as an HTTP
-// route, and we call it with a plain fetch().
+// 原先绕道 CloudBase 云函数会跨域(CORS)且依赖外部服务；现在站点和后端在同一台
+// 服务器，直接同源调用 /api/ipinfo、/api/saveReport、/api/getReport，
+// 无跨域、无 quota、无第三方依赖。后端实现见 server/netcheck-api/server.js。
 //
-// Console setup required (one-time):
-//   环境管理 → HTTP 访问服务 → 路由管理：add routes /ipinfo /saveReport /getReport
-//   环境管理 → HTTP 访问服务 → 跨域设置：add the static hosting domain
-//
-// Note: we use Content-Type text/plain to keep the request a CORS "simple
-// request" — no OPTIONS preflight, fewer ways for CORS config to break.
-
-// HTTP Access Service base URL.
-// From tcloudbaseapp.com domain, derive the ap-shanghai.app.tcloudbase.com gateway.
-// Example: tk-netcheck-prod-d8es2vm0d40fecd-1259354505.tcloudbaseapp.com
-//       → tk-netcheck-prod-d8es2vm0d40fecd-1259354505.ap-shanghai.app.tcloudbase.com
-const HTTP_BASE = window.__CB_HTTP_BASE__
-  || (() => {
-    const h = location.hostname;
-    if (h.includes('tcloudbaseapp.com')) {
-      const base = h.replace('tcloudbaseapp.com', 'ap-shanghai.app.tcloudbase.com');
-      return `https://${base}`;
-    }
-    if (h.includes('tcb.qcloud.la')) {
-      const base = h.replace('tcb.qcloud.la', 'ap-shanghai.app.tcloudbase.com');
-      return `https://${base}`;
-    }
-    return 'https://tk-netcheck-prod-d8es2vm0d40fecd-1259354505.ap-shanghai.app.tcloudbase.com';
-  })();
+// 可用 window.__API_BASE__ 覆盖（例如本地调试指向别的地址）。默认同源 /api。
+const HTTP_BASE = window.__API_BASE__ || '/api';
 
 // Call a cloud function via its HTTP route. Returns the parsed JSON the
 // function returned (e.g. { code: 0, data: {...} }).
