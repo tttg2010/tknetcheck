@@ -55,10 +55,19 @@ export async function runIp() {
     // Step 1 — browser detects its own public (proxy) IP.
     const publicIp = await detectPublicIp();
     if (!publicIp) {
+      // 拿不到公网 IP 分两种情况，且都是「网络本身」的信号，不是工具坏了：
+      //   offline    —— 设备根本没联网
+      //   restricted —— 在线，但连 Cloudflare / ipify 这些国际回显服务都到不了
+      //                 → 国内直连（没开代理）或代理未生效。对 TikTok 而言这是高风险环境。
+      const offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
       return {
         ok: false,
+        offline,
+        restricted: !offline,
         durationMs: Math.round(performance.now() - startedAt),
-        error: '无法获取公网 IP（IP 回显服务不可达，可能网络受限）'
+        error: offline
+          ? '设备未联网'
+          : '国际网络不可达 — 当前可能是国内直连或代理未生效'
       };
     }
 

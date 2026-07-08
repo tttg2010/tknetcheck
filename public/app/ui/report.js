@@ -58,7 +58,17 @@ function buildModules(rep) {
   // IP
   (() => {
     const r = R.ip;
-    if (!r || !r.ok) { M.push({ key: 'ip', ic: '🌐', nm: 'IP 身份', score: S.ip || 0, sum: 'IP 信息不可用', findings: failFindings(r) }); return; }
+    if (!r || !r.ok) {
+      let sum = 'IP 信息不可用', findings = failFindings(r);
+      if (r && (r.restricted || r.offline)) {
+        sum = r.offline ? '设备未联网' : '国际网络不可达 · 高风险';
+        findings = [
+          ['danger', esc(r.error || '国际网络不可达')],
+          ['info', '这本身就是强风险信号：TikTok 需要能访问国际网络的环境']
+        ];
+      }
+      M.push({ key: 'ip', ic: '🌐', nm: 'IP 身份', score: S.ip || 0, sum, findings }); return;
+    }
     const f = [
       ['info', `地理位置 <b>${esc(r.countryName || r.country || '未知')} · ${esc(r.city || '?')}</b>`],
       ['info', `运营商 <b>${esc(r.org || r.asn || '未知')}</b>`],
@@ -208,8 +218,13 @@ export function renderReport(rootEl, rep) {
   const T = TIERS[t] || TIERS.warning;
 
   const q = (sel) => rootEl.querySelector(sel);
-  if (q('#verdictH')) q('#verdictH').textContent = T.verdict[0];
-  if (q('#verdictP')) q('#verdictP').textContent = T.verdict[1];
+  // 国际网络受限/未联网时，顶部判词直接点破风险，不用泛泛的分数判词。
+  const ipR = (rep.results || {}).ip;
+  const restricted = ipR && (ipR.restricted || ipR.offline);
+  const vH = restricted ? (ipR.offline ? '设备未联网，无法检测' : '你的网络无法访问国际服务') : T.verdict[0];
+  const vP = restricted ? (ipR.offline ? '请检查网络连接后重试' : '这是高风险环境——TikTok 需要能访问国际网络。请开启代理、连上要发视频的网络后重测') : T.verdict[1];
+  if (q('#verdictH')) q('#verdictH').textContent = vH;
+  if (q('#verdictP')) q('#verdictP').textContent = vP;
   if (q('#verdictMeta')) q('#verdictMeta').textContent = rep.meta || '';
 
   // Top issues — 引擎 topIssues 或前端按 severity 排序取前 3

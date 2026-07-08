@@ -57,6 +57,18 @@ export function buildRecommendations(results, scores, config) {
         body: `风险评分 >${ipC.riskMidAt} 时养号难度增大。换 IP 后重新检测。`
       });
     }
+  } else if (ip && ip.offline) {
+    push({
+      severity: 'danger',
+      title: '设备未联网',
+      body: '当前设备似乎没有网络连接，无法完成检测。请检查网络后重新检测。'
+    });
+  } else if (ip && ip.restricted) {
+    push({
+      severity: 'danger',
+      title: '网络无法访问国际服务（高风险）',
+      body: '你的网络连 Cloudflare / 公网 IP 服务都连不上——说明当前要么是国内直连（没开代理），要么代理未生效。这种环境下 TikTok 基本 0 播放、无法养号。请开启代理、连上要发视频的那个网络后重新检测。'
+    });
   } else if (ip && !ip.ok) {
     push({
       severity: 'warn',
