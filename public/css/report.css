@@ -13,6 +13,22 @@
 .verdict p{color:var(--ink-2);font-size:13.5px}
 .verdict .meta{color:var(--ink-4);font-size:11.5px;font-family:var(--mono);margin-top:8px}
 
+/* 受限解决方案引导卡（导流赞助商） */
+.fix-cta{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:13px 15px;
+  border:1px solid var(--acc);border-radius:var(--r-lg);
+  background:linear-gradient(135deg,rgba(52,227,176,.10),rgba(55,182,255,.08))}
+.fix-cta[hidden]{display:none}
+.fix-ic{font-size:22px;flex-shrink:0}
+.fix-main{flex:1;min-width:0}
+.fix-t{font-weight:650;font-size:14px}
+.fix-d{font-size:12px;color:var(--ink-2);margin-top:2px}
+.fix-btn{flex-shrink:0;font-size:13px;font-weight:650;color:#04120d;background:var(--acc-grad);
+  border-radius:999px;padding:8px 14px;white-space:nowrap}
+.fix-btn:hover{filter:brightness(1.06)}
+/* 赞助商条被引导时的高亮脉冲 */
+@keyframes sp-pulse{0%,100%{box-shadow:0 0 0 0 rgba(52,227,176,0)}50%{box-shadow:0 0 0 3px rgba(52,227,176,.35)}}
+.sponsors.pulse{animation:sp-pulse 1s ease 2;border-radius:var(--r)}
+
 /* top issues */
 .topissues{
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 16px;margin-bottom:14px;

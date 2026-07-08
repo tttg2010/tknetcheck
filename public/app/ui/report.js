@@ -227,6 +227,24 @@ export function renderReport(rootEl, rep) {
   if (q('#verdictP')) q('#verdictP').textContent = vP;
   if (q('#verdictMeta')) q('#verdictMeta').textContent = rep.meta || '';
 
+  // 受限（非未联网）时露出"解决方案"引导卡，顺势把高意向用户导到顶部赞助商。
+  const fix = q('#fixCta');
+  if (fix) {
+    const showFix = restricted && !ipR.offline;
+    fix.hidden = !showFix;
+    if (showFix && !fix.dataset.wired) {
+      fix.dataset.wired = '1';
+      const btn = fix.querySelector('#fixCtaBtn');
+      if (btn) btn.onclick = () => {
+        const sp = document.querySelector('.sponsors');
+        if (sp) {
+          sp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          sp.classList.remove('pulse'); void sp.offsetWidth; sp.classList.add('pulse');
+        }
+      };
+    }
+  }
+
   // Top issues — 引擎 topIssues 或前端按 severity 排序取前 3
   const order = { danger: 0, warn: 1, info: 2 };
   const top = (rep.topIssues && rep.topIssues.length ? rep.topIssues : [...(rep.recommendations || [])].sort((a, b) => order[a.severity] - order[b.severity]).slice(0, 3));
