@@ -7,9 +7,11 @@ Type=simple
 Environment=PORT=8096
 Environment=STORE_DIR=/var/lib/netcheck/reports
 # 可选增强，留空则仅用 ip-api.com（够用）：
-#   IPQS_KEY  —— IPQualityScore 免费 5000/月，设了就有真·欺诈分数(fraud_score)，纯净度来源变"风控库"
+#   PROXYCHECK_KEY —— proxycheck.io 免费 1000/天，设了就有真·风险分(risk)，纯净度来源变"风控库"（推荐）
+#   IPQS_KEY  —— IPQualityScore（免费仅 35/天，且限单账号），设了叠加 fraud_score
 #   IPINFO_TOKEN / SCAMALYTICS_* —— 其它可选源
 Environment=IPINFO_TOKEN=
+Environment=PROXYCHECK_KEY=
 Environment=IPQS_KEY=
 # Environment=SCAMALYTICS_USER=
 # Environment=SCAMALYTICS_KEY=
