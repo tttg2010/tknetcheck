@@ -4,10 +4,76 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0c10">
-<title>小白兔TKNC · TikTok 网络环境体检仪</title>
-<meta name="description" content="30 秒查出你 TikTok 0 播放的网络真相。6 项诊断维度，仪表级报告，具体到 IP 质量、DNS、WebRTC 泄漏、线路稳定性。">
+<title>小白兔TKNC · TikTok网络环境检测——30秒查出0播放的网络真相</title>
+<meta name="description" content="免费 TikTok 网络环境检测工具：30 秒诊断 IP 质量（机房/住宅）、DNS 泄漏、WebRTC 泄漏、线路稳定性、设备一致性、TikTok 可达性 6 项维度，0-100 分体检报告 + 具体改进建议。专为 TikTok 养号、跨境矩阵运营场景设计。">
+<meta name="keywords" content="TikTok网络检测,TikTok 0播放,TikTok养号,IP质量检测,住宅IP,机房IP,WebRTC泄漏检测,DNS泄漏,TikTok环境检测,tiktok节点测试,小白兔TKNC">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://www.bakdr.com/">
+<!-- Open Graph（微信/QQ/Telegram/Facebook 卡片） -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="小白兔TKNC">
+<meta property="og:title" content="30秒查出你 TikTok 0播放的网络真相">
+<meta property="og:description" content="内容一样，别人爆你 0 播放？问题可能在网络环境。6 项维度 30 秒出体检报告，免费检测 👇">
+<meta property="og:url" content="https://www.bakdr.com/">
+<meta property="og:image" content="https://www.bakdr.com/og.png">
+<meta property="og:locale" content="zh_CN">
+<!-- Twitter/X 卡片 -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="30秒查出你 TikTok 0播放的网络真相">
+<meta name="twitter:description" content="6 项维度诊断 TikTok 网络环境：IP 质量、DNS、WebRTC 泄漏、稳定性。免费，30 秒出报告。">
+<meta name="twitter:image" content="https://www.bakdr.com/og.png">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="manifest" href="manifest.webmanifest">
+<!-- 结构化数据：应用 + FAQ 富摘要 -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "name": "小白兔TKNC",
+      "alternateName": "TikTok 网络环境体检仪",
+      "url": "https://www.bakdr.com/",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript",
+      "inLanguage": "zh-CN",
+      "description": "免费 TikTok 网络环境检测工具：30 秒诊断 IP 质量、DNS、WebRTC 泄漏、线路稳定性、设备一致性、TikTok 可达性，输出 0-100 分体检报告与改进建议。",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CNY" }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "0 播放真的和网络有关系吗？",
+          "acceptedAnswer": { "@type": "Answer", "text": "有。TikTok 在推流前会评估你的网络环境是否可信。机房 IP、DNS 与时区不匹配、WebRTC 泄漏真实 IP 等信号，会让算法判定为高风险环境，从而限制初始推荐量——表现就是内容不错却 0 播放。" }
+        },
+        {
+          "@type": "Question",
+          "name": "检测安全吗？会不会暴露账号？",
+          "acceptedAnswer": { "@type": "Answer", "text": "安全。检测全程在浏览器本地发起网络请求，不需要登录 TikTok、不碰账号密码。不存储原始公网 IP、真实内网 IP 和 Canvas 指纹原图，只保留匿名派生指标最多 7 天。" }
+        },
+        {
+          "@type": "Question",
+          "name": "分数多少算合格？",
+          "acceptedAnswer": { "@type": "Answer", "text": "90 分以上优秀，可放心养号发布；70–89 良好，优化少数项即可；50–69 警告，存在风险，不建议发新视频；50 以下危险，建议立即排查环境再操作。" }
+        },
+        {
+          "@type": "Question",
+          "name": "多久检测一次比较好？",
+          "acceptedAnswer": { "@type": "Answer", "text": "每次换 IP、换网络、换代理线路后都建议测一次；稳定使用时一周一次即可。检测要用真正发视频的那台手机、那个网络。" }
+        },
+        {
+          "@type": "Question",
+          "name": "机房 IP 和住宅 IP 有什么区别？",
+          "acceptedAnswer": { "@type": "Answer", "text": "机房/IDC IP 来自数据中心（AWS、Vultr 等），一个 IP 段被大量用户共用，TikTok 极易识别为代理，是养号大忌；住宅 IP 来自真实家庭宽带，干净、风险低，是养号首选。" }
+        }
+      ]
+    }
+  ]
+}
+</script>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/components.css">

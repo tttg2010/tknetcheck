@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /share.html
+
+Sitemap: https://www.bakdr.com/sitemap.xml
