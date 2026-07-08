@@ -1,15 +1,12 @@
-// App entry — wires phases, runs the 6 detection modules.
+// App 入口 —— 编排 6 个真实检测模块，接判断引擎评分，驱动诊断仪三态 UI。
 //
-// Phases swap via `hidden` on three <section> elements. Each phase module
-// (landing/progress/report) owns its DOM and listens to the central event bus.
+// 编排骨架保留自旧版：IP 先行（DNS/Device/WebRTC 依赖它的 country/ip），
+// Stability 后台并行（30s，无依赖），其余快模块串行，全程 cancelled 可中断。
+// 评分/建议全部走 @tknc/engine 的 public 副本（app/engine/*，由 scripts/sync-engine.sh 同步）。
+// UI 换成单容器三态（console.js）+ 原型报告渲染（ui/report.js）。
 
 import { state, bus, resetState } from './state.js';
 import { api } from './api.js';
-import { t } from './util/i18n.js';
-
-import { mountLanding } from './ui/landing.js';
-import { mountProgress, resetProgress } from './ui/progress.js';
-import { mountReport, renderReport } from './ui/report.js';
 
 import { runIp } from './modules/ip.js';
 import { runDns } from './modules/dns.js';
@@ -19,115 +16,102 @@ import { runDevice } from './modules/device.js';
 import { runReachability } from './modules/reachability.js';
 
 import {
-  scoreIp, scoreDns, scoreWebRTC, scoreStability, scoreDevice, scoreReachability, overall, tierOf
-} from './scoring.js';
-import { buildRecommendations } from './recommendations.js';
+  evaluate, resolveConfig,
+  scoreIp, scoreDns, scoreWebRTC, scoreStability, scoreDevice, scoreReachability
+} from './engine/index.js';
 
-// ── Phase switching ─────────────────────────────────────────────────────────
-function showPhase(name) {
-  state.phase = name;
-  for (const id of ['phase-landing', 'phase-progress', 'phase-report']) {
-    const el = document.getElementById(id);
-    if (!el) continue;
-    el.hidden = id !== `phase-${name}`;
-  }
-  window.scrollTo({ top: 0, behavior: 'instant' });
+import { startScan, markScanRow, creepGauge, showReport, resetConsole } from './ui/console.js';
+import { renderReport } from './ui/report.js';
+import { mountSponsors } from './ui/sponsors.js';
+import { mountWechat, mountFaq, copyText } from './ui/wechat.js';
+
+const CFG = resolveConfig();
+
+// 单模块分数 → 扫描行状态点（即时反馈）。与引擎打分同源，不会与总报告漂移。
+function markFromScore(name, score) {
+  markScanRow(name, score >= 70 ? 'ok' : score >= 50 ? 'warn' : 'fail');
 }
 
-// ── Orchestrator ────────────────────────────────────────────────────────────
+// tier 分档权重定义的模块顺序，用于进度中让仪表按"已完成模块的加权均分"爬升。
+const WEIGHTS = CFG.weights;
+
+// ── 编排 ────────────────────────────────────────────────────────
+let running = false;
+
 async function runAllModules() {
   state.startedAt = Date.now();
   state.cancelled = false;
-  resetProgress();
 
-  let doneCount = 0;
-  const tick = () => bus.emit('progress:count', { done: ++doneCount, total: 6 });
-  const mark = (m, s) => bus.emit('module:state', { name: m, state: s });
-  const status = (txt) => bus.emit('module:status', { text: txt });
+  // 进度中让仪表爬升：用"已完成模块的加权均分"作为瞬时目标（视觉反馈，非最终分）。
+  const doneScores = {};
+  const creep = () => {
+    let sw = 0, ss = 0;
+    for (const k of Object.keys(doneScores)) { sw += WEIGHTS[k]; ss += doneScores[k] * WEIGHTS[k]; }
+    if (sw > 0) creepGauge(Math.round(ss / sw));
+  };
+  const settle = (name, result, score) => {
+    state.results[name] = result;
+    state.scores[name] = score;
+    doneScores[name] = score;
+    markFromScore(name, score);
+    creep();
+  };
 
-  // Run IP first because Dns + Device + WebRTC depend on its country/ip.
-  // Run Stability in parallel with the rest (it takes 30s, no dependency).
-  mark('ip', 'running');
-  status(t.status.runningModule(t.module.ip));
+  // IP 先行
+  markScanRow('ip', 'running');
   const ipPromise = runIp();
 
-  // Kick off stability in the background — it's the long-running one.
-  mark('stability', 'running');
+  // Stability 后台并行（长任务）
+  markScanRow('stability', 'running');
   let stabilityResult = null;
-  const stabilityPromise = runStability(({ elapsedMs, totalMs }) => {
-    const sec = Math.round(elapsedMs / 1000);
-    const total = Math.round(totalMs / 1000);
-    status(t.status.stabilitySampling(sec, total));
-  }).then(r => { stabilityResult = r; });
+  const stabilityPromise = runStability(() => {}).then(r => { stabilityResult = r; });
 
   const ipResult = await ipPromise;
-  state.results.ip = ipResult;
-  state.scores.ip = scoreIp(ipResult);
-  mark('ip', state.scores.ip >= 70 ? 'ok' : state.scores.ip >= 50 ? 'warn' : 'fail');
-  tick();
   if (state.cancelled) return;
+  settle('ip', ipResult, scoreIp(ipResult, CFG));
 
-  // DNS (depends on IP country)
-  mark('dns', 'running');
-  status(t.status.runningModule(t.module.dns));
+  // DNS（依赖 IP 国家）
+  markScanRow('dns', 'running');
   const dnsResult = await runDns(ipResult.country, ipResult.countryName);
-  state.results.dns = dnsResult;
-  state.scores.dns = scoreDns(dnsResult);
-  mark('dns', state.scores.dns >= 70 ? 'ok' : state.scores.dns >= 50 ? 'warn' : 'fail');
-  tick();
   if (state.cancelled) return;
+  settle('dns', dnsResult, scoreDns(dnsResult, CFG));
 
-  // WebRTC (depends on IP)
-  mark('webrtc', 'running');
-  status(t.status.runningModule(t.module.webrtc));
+  // WebRTC（依赖 IP）
+  markScanRow('webrtc', 'running');
   const webrtcResult = await runWebRTC(ipResult.ip);
-  state.results.webrtc = webrtcResult;
-  state.scores.webrtc = scoreWebRTC(webrtcResult);
-  mark('webrtc', state.scores.webrtc >= 70 ? 'ok' : state.scores.webrtc >= 50 ? 'warn' : 'fail');
-  tick();
   if (state.cancelled) return;
+  settle('webrtc', webrtcResult, scoreWebRTC(webrtcResult, CFG));
 
-  // Device (depends on IP country)
-  mark('device', 'running');
-  status(t.status.runningModule(t.module.device));
+  // Device（依赖 IP 国家）
+  markScanRow('device', 'running');
   const deviceResult = await runDevice(ipResult.country);
-  state.results.device = deviceResult;
-  state.scores.device = scoreDevice(deviceResult);
-  mark('device', state.scores.device >= 70 ? 'ok' : state.scores.device >= 50 ? 'warn' : 'fail');
-  tick();
   if (state.cancelled) return;
+  settle('device', deviceResult, scoreDevice(deviceResult, CFG));
 
-  // Reachability — quick, in parallel with the still-running stability
-  mark('reachability', 'running');
-  status(t.status.runningModule(t.module.reachability));
+  // Reachability（快，与仍在跑的 stability 并行）
+  markScanRow('reachability', 'running');
   const reachabilityResult = await runReachability();
-  state.results.reachability = reachabilityResult;
-  state.scores.reachability = scoreReachability(reachabilityResult);
-  mark('reachability',
-    state.scores.reachability >= 70 ? 'ok' :
-    state.scores.reachability >= 50 ? 'warn' : 'fail');
-  tick();
   if (state.cancelled) return;
+  settle('reachability', reachabilityResult, scoreReachability(reachabilityResult, CFG));
 
-  // Wait for stability to finish (likely still in flight)
-  status(t.status.runningModule(t.module.stability));
+  // 等 stability 收尾
   await stabilityPromise;
-  state.results.stability = stabilityResult;
-  state.scores.stability = scoreStability(stabilityResult);
-  mark('stability',
-    state.scores.stability >= 70 ? 'ok' :
-    state.scores.stability >= 50 ? 'warn' : 'fail');
-  tick();
+  if (state.cancelled) return;
+  settle('stability', stabilityResult, scoreStability(stabilityResult, CFG));
 
-  // Compute overall + recommendations
-  state.scores.overall = overall(state.scores);
-  state.recommendations = buildRecommendations(state.results, state.scores);
-  status(t.status.finalizing);
+  // 用引擎门面出总报告（唯一评分事实源；同源，不会与上面的即时分漂移）
+  const report = evaluate(state.results, { config: CFG });
+  state.scores = report.scores;                 // 含 overall
+  state.recommendations = report.recommendations;
+  state.tier = report.tier;
+  state.topIssues = report.topIssues;
+  state.configVersion = report.configVersion;
 
-  // Switch to report phase
-  showPhase('report');
+  // 渲染报告 + 定格仪表
   const payload = buildPayloadForRender();
-  renderReport(document.getElementById('phase-report'), payload);
+  const T = renderReport(document.getElementById('report'), payload);
+  showReport(report.overall, T);
+  running = false;
 }
 
 function buildPayloadForRender() {
@@ -135,110 +119,143 @@ function buildPayloadForRender() {
   return {
     scores: { ...state.scores },
     results: { ...state.results },
-    recommendations: [...state.recommendations],
+    recommendations: [...(state.recommendations || [])],
+    topIssues: state.topIssues,
+    tier: state.tier,
+    overall: state.scores.overall,
+    configVersion: state.configVersion,
     meta: `检测于 ${new Date(state.startedAt).toLocaleString('zh-CN')} · 耗时 ${dur}s`
   };
 }
 
-// ── Share flow ──────────────────────────────────────────────────────────────
+// ── 启动检测 ────────────────────────────────────────────────────
+function start() {
+  if (running) return;
+  running = true;
+  resetState();
+  state.startedAt = Date.now();
+  startScan();
+  runAllModules().catch(err => {
+    console.error('[runAllModules]', err);
+    // 兜底：不白屏。用已有 result 尽力出报告。
+    running = false;
+    try {
+      const report = evaluate(state.results, { config: CFG });
+      state.scores = report.scores;
+      state.recommendations = report.recommendations;
+      state.tier = report.tier;
+      state.topIssues = report.topIssues;
+      state.configVersion = report.configVersion;
+      const payload = buildPayloadForRender();
+      const T = renderReport(document.getElementById('report'), payload);
+      showReport(report.overall, T);
+    } catch (e2) {
+      console.error('[fallback render]', e2);
+    }
+  });
+}
+
+function cancel() {
+  state.cancelled = true;
+  running = false;
+  resetState();
+  resetConsole();
+}
+
+function rerun() {
+  resetState();
+  resetConsole();
+  const so = document.getElementById('shareOut');
+  if (so) { so.classList.remove('on'); so.textContent = ''; so.dataset.copy = ''; }
+  const bs = document.getElementById('btnShare');
+  if (bs) { bs.disabled = false; bs.textContent = '生成分享文案'; }
+}
+
+// ── 分享闭环 ────────────────────────────────────────────────────
+const SHARE_HOOK = {
+  excellent: (s) => `我的 TikTok 网络环境 ${s} 分，优秀 😎 你敢测吗？`,
+  good:      (s) => `我的 TikTok 网络环境体检 ${s} 分（良好）✨ 内容一样却 0 播放？先测测网络👇`,
+  warning:   (s) => `我的 TikTok 网络环境才 ${s} 分⚠️ 难怪 0 播放，你的呢？`,
+  danger:    (s) => `我的 TikTok 网络环境 ${s} 分，危险🚨 幸好测了。快查你的👇`
+};
+
 async function onShare() {
-  const shareResult = document.getElementById('share-result');
-  const copyTextEl = document.getElementById('share-copy-text');
-  const btn = document.getElementById('btn-share');
+  const btn = document.getElementById('btnShare');
+  const out = document.getElementById('shareOut');
+  const hint = document.getElementById('shareHint');
   btn.disabled = true;
-  btn.textContent = t.share.generating;
+  btn.textContent = '正在生成…';
+
+  const s = state.scores.overall;
+  const tier = state.tier || 'warning';
+
   try {
     const payload = stripForStorage(buildPayloadForRender());
     const res = await api.saveReport(payload);
-    if (!res || !res.shareId) throw new Error('无返回 shareId');
-    state.shareId = res.shareId;
-    state.shareExpiresAt = res.expiresAt || 0;
-    const url = `${location.origin}${location.pathname.replace(/index\.html$/, '')}share.html?id=${encodeURIComponent(res.shareId)}`;
-
-    // Build tier-aware share copy (hook + score + link), ready to paste into 朋友圈.
-    const tier = tierOf(state.scores.overall);
-    const copyText = (t.shareCopy[tier] || t.shareCopy.warning)
-      .replace('{score}', String(state.scores.overall))
-      .replace('{url}', url);
-
-    // Show the copy text; stash both the copy and the bare url for the buttons.
-    copyTextEl.textContent = copyText;
-    copyTextEl.dataset.copy = copyText;
-    copyTextEl.dataset.url = url;
-
-    shareResult.hidden = false;
-    btn.textContent = t.share.generated;
-    shareResult.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  } catch (e) {
+    if (!res || !(res.shareId || (res.data && res.data.shareId))) throw new Error('云函数未返回 shareId');
+    const shareId = res.shareId || res.data.shareId;
+    state.shareId = shareId;
+    const url = `${location.origin}${location.pathname.replace(/index\.html$/, '')}share.html?id=${encodeURIComponent(shareId)}`;
+    const hook = (SHARE_HOOK[tier] || SHARE_HOOK.warning)(s);
+    const text = `${hook}\n🐰 小白兔TKNC · 6 项诊断 30 秒出报告\n${url}`;
+    out.textContent = text;
+    out.dataset.copy = text;
+    out.classList.add('on');
+    btn.textContent = '已生成 · 点此复制';
     btn.disabled = false;
-    btn.textContent = t.share.failed;
-    const errorMsg = e && e.message ? e.message : String(e);
-    console.error('[share]', errorMsg);
-    // Show user-friendly error
-    const hint = document.getElementById('share-hint');
-    if (hint) {
-      const orig = hint.textContent;
-      hint.textContent = `❌ ${errorMsg}（请检查网络或稍后重试）`;
-      setTimeout(() => { hint.textContent = orig; }, 5000);
-    }
+    if (hint) hint.hidden = true;
+  } catch (e) {
+    // 云函数失败降级：本地生成不含分享链接的文案，用户仍可复制发圈。
+    const hook = (SHARE_HOOK[tier] || SHARE_HOOK.warning)(s);
+    const url = `${location.origin}${location.pathname.replace(/index\.html$/, '')}`;
+    const text = `${hook}\n🐰 小白兔TKNC · 6 项诊断 30 秒出报告\n${url}`;
+    out.textContent = text;
+    out.dataset.copy = text;
+    out.classList.add('on');
+    btn.textContent = '已生成 · 点此复制';
+    btn.disabled = false;
+    console.warn('[share] 云函数不可用，降级为本地文案：', (e && e.message) || e);
+    if (hint) { hint.hidden = false; hint.textContent = '分享链接暂不可用，已生成可复制文案'; }
   }
 }
 
-// Strip identifying fields before storage — keep derived booleans only.
+// 存储前剥离可标识字段——只保留派生布尔与匿名指标（隐私声明的技术兑现）。
 function stripForStorage(p) {
   const out = JSON.parse(JSON.stringify(p));
-  const ip = out.results.ip;
-  if (ip) {
-    delete ip.ip;
-    delete ip.raw;
-  }
-  const wr = out.results.webrtc;
+  const ip = out.results && out.results.ip;
+  if (ip) { delete ip.ip; delete ip.raw; }
+  const wr = out.results && out.results.webrtc;
   if (wr) {
-    delete wr.referenceIp;
-    delete wr.srflxIps;
-    delete wr.hostCandidates;
-    delete wr.realLocalIps;
-    delete wr.ipv6Address;
+    delete wr.referenceIp; delete wr.srflxIps; delete wr.hostCandidates;
+    delete wr.realLocalIps; delete wr.ipv6Address;
   }
-  const dev = out.results.device;
-  if (dev) {
-    // Keep canvasHash (already SHA-256) but trim UA for length.
-    if (dev.ua) dev.ua = dev.ua.slice(0, 200);
-  }
+  const dev = out.results && out.results.device;
+  if (dev && dev.ua) dev.ua = dev.ua.slice(0, 200);
   return out;
 }
 
-// ── Bootstrap ───────────────────────────────────────────────────────────────
+// ── 引导 ────────────────────────────────────────────────────────
 function bootstrap() {
-  mountLanding({ onStart: () => { showPhase('progress'); runAllModules().catch(err => {
-    console.error('[runAllModules]', err);
-    bus.emit('module:status', { text: '检测出现错误：' + (err && err.message || '未知错误') });
-  }); }});
+  const wx = mountWechat();
+  mountFaq();
+  mountSponsors({ onEmptyClick: wx && wx.open });
 
-  mountProgress({ onCancel: () => {
-    state.cancelled = true;
-    resetState();
-    showPhase('landing');
-  }});
+  document.getElementById('btnStart').onclick = start;
+  document.getElementById('btnCancel').onclick = cancel;
+  document.getElementById('btnRerun').onclick = rerun;
 
-  mountReport({
-    onShare,
-    onRerun: () => {
-      resetState();
-      // Re-mount landing & reset checkbox
-      const consent = document.getElementById('consent');
-      if (consent) consent.checked = false;
-      const btnStart = document.getElementById('btn-start');
-      if (btnStart) btnStart.disabled = true;
-      const shareResult = document.getElementById('share-result');
-      if (shareResult) shareResult.hidden = true;
-      const btnShare = document.getElementById('btn-share');
-      if (btnShare) { btnShare.disabled = false; btnShare.textContent = t.share.cta; }
-      showPhase('landing');
+  // 分享按钮：首次点击生成，之后点击复制（文案已在 dataset.copy）。
+  const btnShare = document.getElementById('btnShare');
+  btnShare.onclick = async () => {
+    const out = document.getElementById('shareOut');
+    if (out && out.classList.contains('on') && out.dataset.copy) {
+      const okc = await copyText(out.dataset.copy);
+      btnShare.textContent = okc ? '已复制 ✓' : '复制失败，请手动长按';
+      setTimeout(() => { btnShare.textContent = '已生成 · 点此复制'; }, 1800);
+      return;
     }
-  });
-
-  showPhase('landing');
+    onShare();
+  };
 }
 
 bootstrap();

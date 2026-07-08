@@ -1,77 +1,63 @@
-/* 小白兔TKNC design tokens — dark theme, inspired by TuziAI but distinct accents */
+/* ============================================================
+   小白兔TKNC — 设计令牌（"诊断仪 Diagnostic Console" 主题）
+   设计主张：精密诊断仪器。暖近黑 + 单一青绿-蓝强调 + 等宽技术读数。
+   源自 docs/prototype/index.html 的 :root 令牌，语义化拆分。
+   ============================================================ */
 :root {
-  /* Backgrounds */
-  --bg: #0a0e1a;
-  --bg-elevated: #111827;
-  --panel: #1a2234;
-  --panel-2: #232c42;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  /* canvas — 暖近黑，非冷蓝黑 */
+  --bg:        #0b0c10;
+  --bg-grain:  #0e0f14;
+  --surface:   #141620;
+  --surface-2: #191c28;
+  --surface-3: #20232f;
+  --inset:     #0d0e13;
 
-  /* Text */
-  --text: #e6ebf5;
-  --text-muted: #8b95ab;
-  --text-dim: #5a647a;
+  /* hairlines */
+  --line:      rgba(255,255,255,.07);
+  --line-2:    rgba(255,255,255,.11);
+  --line-glow: rgba(120,224,200,.22);
 
-  /* Brand */
-  --brand: #00d4ff;
-  --brand-2: #7c5cff;
-  --brand-gradient: linear-gradient(135deg, #00d4ff 0%, #7c5cff 100%);
+  /* ink */
+  --ink:   #f3f5f8;
+  --ink-2: #aab0bd;
+  --ink-3: #6f7686;
+  --ink-4: #4a5060;
 
-  /* Status / tier colors */
-  --tier-excellent: #10b981;   /* 90-100 green  */
-  --tier-good: #facc15;        /* 70-89  yellow */
-  --tier-warning: #f97316;     /* 50-69  orange */
-  --tier-danger: #ef4444;      /* 0-49   red    */
+  /* single confident accent + tier scale */
+  --acc:   #34e3b0;        /* mint-emerald — brand energy */
+  --acc-2: #37b6ff;        /* cyan-blue — gradient partner */
+  --good:  #34e3b0;
+  --ok:    #4ca8ff;
+  --warn:  #f7b64b;
+  --bad:   #ff5d6c;
 
-  /* Semantic */
-  --ok: #10b981;
-  --warn: #facc15;
-  --danger: #ef4444;
-  --info: #3b82f6;
+  /* tier 语义别名（0-100 分档：excellent/good/warning/danger） */
+  --tier-excellent: var(--good);
+  --tier-good:      var(--ok);
+  --tier-warning:   var(--warn);
+  --tier-danger:    var(--bad);
 
-  /* Spacing scale */
-  --sp-1: 4px;
-  --sp-2: 8px;
-  --sp-3: 12px;
-  --sp-4: 16px;
-  --sp-5: 24px;
-  --sp-6: 32px;
-  --sp-7: 48px;
-  --sp-8: 64px;
+  /* severity 语义别名（findings / recs 用） */
+  --sev-ok:     var(--good);
+  --sev-warn:   var(--warn);
+  --sev-danger: var(--bad);
+  --sev-info:   var(--ok);
 
-  /* Radius */
-  --r-sm: 6px;
-  --r-md: 10px;
-  --r-lg: 16px;
-  --r-xl: 24px;
-  --r-pill: 999px;
+  --acc-grad: linear-gradient(135deg,#34e3b0 0%,#37b6ff 100%);
 
-  /* Shadow */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
-  --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
-  --shadow-glow: 0 0 24px rgba(0, 212, 255, 0.25);
+  /* type */
+  --sans: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --mono: "SF Mono","JetBrains Mono","Roboto Mono",ui-monospace,Menlo,Consolas,monospace;
 
-  /* Type */
-  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
-  --font-mono: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  --fs-xs: 12px;
-  --fs-sm: 13px;
-  --fs-md: 15px;
-  --fs-lg: 17px;
-  --fs-xl: 20px;
-  --fs-2xl: 28px;
-  --fs-3xl: 40px;
+  /* geometry */
+  --r-sm: 10px;
+  --r:    14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --pad:  20px;
+  --maxw: 720px;
 
-  /* Motion */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --dur-fast: 150ms;
-  --dur-base: 250ms;
-  --dur-slow: 500ms;
-
-  /* Safe area for iOS notch */
+  /* iOS 安全区 */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }

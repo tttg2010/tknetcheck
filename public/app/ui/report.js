@@ -1,281 +1,262 @@
-// Report phase: renders the full report from state.
+// 报告渲染器（首页报告态 + share.html 共用）。
+//
+// 输入 payload = { scores, results, recommendations, meta, tier?, overall? }：
+//   - scores/results 形状对齐各模块 result 对象（见 docs/prototype/report-content-spec.md）
+//   - recommendations 每条带 { module, severity, title, body }（引擎输出，module 由引擎给出）
+//   - tier/overall 若缺省则由引擎 tierOf 兜底推导（share.html 存的 payload 里可能没带）
+//
+// 逻辑主体逐字移植自 docs/prototype/index.html 的 buildModules()/renderReport()，
+// 改动：① recs 按 rec.module 精确归类（取代原型 groupRecs 关键词猜测）；
+//       ② 所有来自真实 result 的动态值经 escapeHtml 转义（真实 UA/org/IP 可能含特殊字符）。
 
-import { tierOf } from '../scoring.js';
-import { t } from '../util/i18n.js';
+import { tierOf, resolveConfig } from '../engine/index.js';
 
-const RING_CIRC = 502.65;  // 2 * Math.PI * 80
+const CFG = resolveConfig();
 
-export function mountReport({ onShare, onRerun }) {
-  document.getElementById('btn-share').addEventListener('click', onShare);
-  document.getElementById('btn-rerun').addEventListener('click', onRerun);
-
-  // Copy the full share copy (hook + score + link) — for pasting into 朋友圈.
-  wireCopyButton('btn-copy-copy', t.share.copyCopy, () => {
-    const el = document.getElementById('share-copy-text');
-    return el ? el.dataset.copy || el.textContent : '';
-  });
-
-  // Copy just the link.
-  wireCopyButton('btn-copy-link', t.share.copyLink, () => {
-    const el = document.getElementById('share-copy-text');
-    return el ? el.dataset.url || '' : '';
-  });
-}
-
-// Generic copy-to-clipboard button wiring with success feedback.
-function wireCopyButton(id, label, getText) {
-  const btn = document.getElementById(id);
-  if (!btn) return;
-  btn.addEventListener('click', async () => {
-    const text = getText();
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (_) {
-      // Fallback for older / non-secure contexts
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand('copy'); } catch (__) {}
-      document.body.removeChild(ta);
-    }
-    const original = btn.textContent;
-    btn.textContent = t.share.copied;
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = label; btn.classList.remove('copied'); }, 2000);
-  });
-}
-
-// Render the entire report panel.
-// Used both by the live phase 3 view and by share.html.
-export function renderReport(rootEl, payload) {
-  const { scores, results, recommendations, meta } = payload;
-
-  // Overall score ring + tier
-  const overallEl = rootEl.querySelector('#overall-score');
-  const overallRing = rootEl.querySelector('#overall-ring');
-  const overallTier = rootEl.querySelector('#overall-tier-label');
-  const overallMeta = rootEl.querySelector('#report-meta');
-
-  if (overallEl) overallEl.textContent = String(scores.overall);
-  if (overallRing) {
-    const tier = tierOf(scores.overall);
-    overallRing.classList.remove('tier-excellent','tier-good','tier-warning','tier-danger','indeterminate');
-    overallRing.classList.add(`tier-${tier}`);
-    const fg = overallRing.querySelector('.fg-ring');
-    if (fg) {
-      const offset = RING_CIRC * (1 - scores.overall / 100);
-      fg.setAttribute('stroke-dasharray', String(RING_CIRC));
-      fg.setAttribute('stroke-dashoffset', String(offset));
-    }
-  }
-  if (overallTier) {
-    const tier = tierOf(scores.overall);
-    overallTier.className = 'tier-label tier-' + tier;
-    overallTier.textContent = t.tier[tier];
-  }
-  // Quotable verdict line — the screenshot-worthy one-liner.
-  const verdictEl = rootEl.querySelector('#verdict-line');
-  if (verdictEl) {
-    const tier = tierOf(scores.overall);
-    verdictEl.className = 'verdict-line tier-' + tier;
-    verdictEl.textContent = t.verdict[tier];
-  }
-  if (overallMeta && meta) overallMeta.textContent = meta;
-
-  // Sections
-  const sectionsEl = rootEl.querySelector('#report-sections');
-  if (sectionsEl) {
-    sectionsEl.innerHTML = '';
-    sectionsEl.appendChild(buildSection('ip',           '🌐', 'IP 身份',           scores.ip,           results.ip,           recommendations));
-    sectionsEl.appendChild(buildSection('dns',          '🧭', 'DNS（降级版）',     scores.dns,          results.dns,          recommendations));
-    sectionsEl.appendChild(buildSection('webrtc',       '🛰️', 'WebRTC / IPv6 泄漏', scores.webrtc,       results.webrtc,       recommendations));
-    sectionsEl.appendChild(buildSection('stability',    '📈', '网络稳定性',         scores.stability,    results.stability,    recommendations));
-    sectionsEl.appendChild(buildSection('device',       '📱', '设备一致性',         scores.device,       results.device,       recommendations));
-    sectionsEl.appendChild(buildSection('reachability', '🎯', 'TikTok 可达性',      scores.reachability, results.reachability, recommendations));
-  }
-}
-
-function buildSection(key, icon, title, score, result, allRecs) {
-  const el = document.createElement('section');
-  el.className = 'section';
-  el.setAttribute('data-module', key);
-
-  const tier = tierOf(score);
-
-  const head = document.createElement('div');
-  head.className = 'section-head';
-  head.innerHTML = `
-    <div class="section-title">
-      <div class="section-icon">${icon}</div>
-      <div>${title}</div>
-    </div>
-    <div class="sub-score tier-${tier}">${score}</div>
-  `;
-  el.appendChild(head);
-
-  // Body: findings + KV
-  const body = document.createElement('div');
-  body.appendChild(buildFindings(key, result));
-  body.appendChild(buildKV(key, result));
-  el.appendChild(body);
-
-  // Per-module recommendations (filter from full list — match by heuristics on text)
-  const recsForModule = filterRecsForModule(key, allRecs);
-  if (recsForModule.length) {
-    const recs = document.createElement('div');
-    recs.className = 'recs';
-    recs.innerHTML = '<h5>建议</h5><ol>' +
-      recsForModule.map(r => `<li><strong>${escapeHtml(r.title)}</strong> — ${escapeHtml(r.body)}</li>`).join('') +
-      '</ol>';
-    el.appendChild(recs);
-  }
-
-  return el;
-}
-
-function buildFindings(key, r) {
-  const ul = document.createElement('ul');
-  ul.className = 'findings';
-
-  const add = (severity, text) => {
-    const li = document.createElement('li');
-    const mark = severity === 'ok' ? '✓' : severity === 'warn' ? '!' : severity === 'danger' ? '✕' : 'ℹ';
-    li.innerHTML = `<span class="marker ${severity}">${mark}</span><span>${escapeHtml(text)}</span>`;
-    ul.appendChild(li);
-  };
-
-  if (!r) { add('warn', '检测未完成'); return ul; }
-  if (!r.ok) { add('danger', `检测失败：${r.error || '未知错误'}`); return ul; }
-
-  switch (key) {
-    case 'ip':
-      add('info', `${r.countryName || r.country || '未知国家'} · ${r.city || '?'}`);
-      add('info', `${r.org || r.asn || '未知运营商'}`);
-      add(r.isHosting ? 'danger' : 'ok', r.isHosting ? '机房 / IDC IP' : '非机房 IP');
-      add(r.isProxy ? 'warn' : 'ok', r.isProxy ? '在风险库中被标记为代理' : '未被标记为代理');
-      if (typeof r.riskScore === 'number') {
-        add(r.riskScore >= 75 ? 'danger' : r.riskScore >= 25 ? 'warn' : 'ok',
-            `风险评分 ${r.riskScore}/100`);
-      }
-      break;
-    case 'dns':
-      // DoH reachability
-      if (r.bothDohReachable) add('ok', 'DoH 双源可达（Google + Cloudflare）');
-      else if (r.googleReachable || r.cloudflareReachable) {
-        add('warn', `仅 ${r.googleReachable ? 'Google' : 'Cloudflare'} DoH 可达，另一家被屏蔽`);
-      } else {
-        add('danger', 'Google / Cloudflare DoH 均不可达，可能被网络层过滤');
-      }
-      // Non-CDN baseline consistency (the actual reliable signal)
-      if (r.baselineConsistent === true) {
-        add('ok', `${r.baselineTarget} 双源解析一致（非 CDN 基准）`);
-      } else if (r.baselineConsistent === false) {
-        add('danger', `${r.baselineTarget} 双源解析不一致 — 疑似 DNS 劫持`);
-      }
-      // Timezone vs IP country
-      if (r.tzCountryMatch === true) add('ok', '时区与 IP 国家一致');
-      else if (r.tzCountryMatch === false) add('danger', '时区与 IP 国家不一致');
-      else if (!r.ipCountryKnown) add('info', '时区交叉校验：未执行（IP 国家未知）');
-      // Informational: TikTok CDN nodes
-      if (r.tiktokGoogleIps.length || r.tiktokCloudflareIps.length) {
-        const all = [...r.tiktokGoogleIps, ...r.tiktokCloudflareIps];
-        add('info', `${r.target} 解析到 ${all.length} 个 CDN 节点（CDN 多节点为正常）`);
-      }
-      add('info', '完整 DNS 泄漏检测需付费版');
-      break;
-    case 'webrtc':
-      if (!r.referenced) {
-        add('info', `WebRTC 探测完成（采集到 ${r.srflxIps ? r.srflxIps.length : 0} 个公网候选）`);
-        add('info', '泄漏判定：未执行（缺少 IP 基准，需先完成模块 1）');
-      } else {
-        add(r.hasWebRtcLeak ? 'danger' : 'ok',
-            r.hasWebRtcLeak ? 'WebRTC 公网 IP 泄漏' : '无 WebRTC 公网 IP 泄漏');
-      }
-      add(r.ipv6Detected ? 'warn' : 'ok', r.ipv6Detected ? '检测到 IPv6 直连' : '未检测到 IPv6');
-      if (r.realLocalIps && r.realLocalIps.length) add('info', `暴露内网 IP：${r.realLocalIps.length} 个`);
-      else add('ok', '内网 IP 已被浏览器匿名化');
-      break;
-    case 'stability': {
-      const o = r.overall || {};
-      add(o.latency <= 300 ? 'ok' : o.latency <= 500 ? 'warn' : 'danger', `平均延迟 ${o.latency}ms`);
-      add(o.jitter  <= 50 ? 'ok' : o.jitter  <= 100 ? 'warn' : 'danger', `抖动 ${o.jitter}ms`);
-      add(o.loss    <= 1  ? 'ok' : o.loss    <= 3   ? 'warn' : 'danger', `丢包率 ${o.loss}%`);
-      if (o.tls === null) add('info', 'TLS 握手时间：未测量（浏览器未暴露 Timing-Allow-Origin）');
-      else add(o.tls <= 400 ? 'ok' : o.tls <= 700 ? 'warn' : 'danger', `TLS 握手 ${o.tls}ms`);
-      if (r.coarse) add('info', '浏览器粗略模式（Performance API 未暴露 Timing-Allow-Origin）');
-      break;
-    }
-    case 'device': {
-      const hasIp = !!r.ipCountry;
-      // Timezone
-      if (r.tzCountryMatch === true) add('ok', `时区与 IP 国家一致：${r.timezone || '?'}`);
-      else if (r.tzCountryMatch === false) add('danger', `时区与 IP 国家不一致：${r.timezone || '?'} vs ${r.ipCountry}`);
-      else if (!hasIp) add('info', `时区：${r.timezone || '?'}（未与 IP 国家交叉校验：IP 信息缺失）`);
-      else add('info', `时区：${r.timezone || '?'}（未知时区对应国家）`);
-      // Language
-      if (r.langCountryMatch === true) add('ok', `语言与 IP 国家一致：${r.language || '?'}`);
-      else if (r.langCountryMatch === false) add('warn', `语言与 IP 国家不一致：${r.language || '?'} vs ${r.ipCountry}`);
-      else if (!hasIp) add('info', `语言：${r.language || '?'}（未与 IP 国家交叉校验）`);
-      else add('info', `语言：${r.language || '?'}`);
-      // UA vs screen
-      if (r.uaScreenMatch === false) add('warn', `屏幕：${r.screen ? `${r.screen.w}×${r.screen.h}` : '?'}（与 UA 不匹配）`);
-      else add('ok', `屏幕：${r.screen ? `${r.screen.w}×${r.screen.h}` : '?'}`);
-      if (r.webglRenderer) add('info', `GPU：${r.webglRenderer.slice(0, 80)}`);
-      break;
-    }
-    case 'reachability':
-      for (const p of (r.probes || [])) {
-        add(p.ok ? 'ok' : 'danger',
-            `${p.host}：${p.ok ? `成功（${p.attempts > 1 ? p.attempts + ' 次' : '一次过'}）` : `失败（${p.attempts} 次后放弃）`}`);
-      }
-      break;
-  }
-  return ul;
-}
-
-function buildKV(key, r) {
-  // Optional details — only show for stability (per-target table) for now
-  if (key !== 'stability' || !r || !r.ok) return document.createDocumentFragment();
-  const table = document.createElement('table');
-  table.className = 'target-table';
-  table.innerHTML = `
-    <thead><tr><th>主机</th><th>延迟</th><th>抖动</th><th>TLS</th><th>丢包</th><th>协议</th></tr></thead>
-    <tbody>${
-      (r.perTarget || []).map(p => `
-        <tr>
-          <td class="host">${escapeHtml(p.host)}</td>
-          <td>${p.latency}ms</td>
-          <td>${p.jitter}ms</td>
-          <td>${p.tls === null ? '−' : p.tls + 'ms'}</td>
-          <td>${p.loss}%</td>
-          <td>${p.protocols.join(',') || '−'}</td>
-        </tr>`).join('')
-    }</tbody>`;
-  return table;
-}
-
-// Heuristic mapping of free-text recommendation titles back to modules.
-function filterRecsForModule(key, recs) {
-  if (!recs) return [];
-  const keywords = {
-    ip: ['IP 信息', 'IDC', '机房', 'IP 被标记', '风险评分'],
-    dns: ['DNS', 'DoH', '双源解析', '时区与 IP 国家不匹配'],
-    webrtc: ['WebRTC', 'IPv6', '局域网', '内网'],
-    stability: ['延迟', '抖动', '丢包', 'TLS', '粗略测量', 'Safari'],
-    device: ['系统时区', '系统语言', 'UA', '交叉校验'],
-    reachability: ['TikTok 全部域名', '需要重试']
-  };
-  const list = keywords[key] || [];
-  return recs.filter(r => list.some(k => r.title.includes(k)));
-}
-
-function escapeHtml(s) {
+// ── 小工具 ────────────────────────────────────────────────────────
+function esc(s) {
   if (s == null) return '';
   return String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
+
+const TIERS = {
+  excellent: { txt: '优秀 · 可放心养号发布',     color: 'var(--good)', emoji: '😎', verdict: ['网络环境优秀，起飞没问题 🚀', '各项指标全部通过'] },
+  good:      { txt: '良好 · 建议优化少数项',     color: 'var(--ok)',   emoji: '🙂', verdict: ['整体不错，优化几项就能起飞 ✨', '大部分检测通过，关注标黄项'] },
+  warning:   { txt: '警告 · 存在风险，不建议发布', color: 'var(--warn)', emoji: '😟', verdict: ['存在风险，建议先处理再发视频', '多项指标需要改善'] },
+  danger:    { txt: '危险 · 严重问题，立即停止',   color: 'var(--bad)',  emoji: '😰', verdict: ['严重问题，请立即排查网络环境', '多项检测未通过'] }
+};
+export function tierName(s) { return tierOf(s, CFG); }
+function sevColor(s) { return s === 'danger' ? 'var(--bad)' : s === 'warn' ? 'var(--warn)' : s === 'ok' ? 'var(--good)' : 'var(--ok)'; }
+export function scoreColor(s) { return TIERS[tierName(s)].color; }
+export function emojiFor(s) { return TIERS[tierName(s)].emoji; }
+function mk(sev) { const c = sevColor(sev); const ch = sev === 'danger' ? '✕' : sev === 'warn' ? '!' : sev === 'info' ? 'i' : '✓'; return `<span class="mk" style="background:${c}">${ch}</span>`; }
+function dot(sev) { return `<span class="mod-stdot" style="background:${sevColor(sev)}"></span>`; }
+function worst(sevs) { if (sevs.includes('danger')) return 'danger'; if (sevs.includes('warn')) return 'warn'; return 'ok'; }
+function ipType(r) { return r.isHosting ? '机房 / IDC' : r.isProxy ? '代理' : r.isMobile ? '移动网络' : r.isResidential ? '住宅宽带' : '未知'; }
+
+// 建议按 module 精确归类（引擎已在每条 rec 上标了 module）。
+function groupRecs(recs) {
+  const g = {};
+  for (const r of (recs || [])) {
+    const k = r.module || 'ip';
+    (g[k] = g[k] || []).push(r);
+  }
+  return g;
+}
+
+// ── 逐模块报告块（findings + KV + 表格 + 建议）──────────────────────
+// 每个模块对 result 缺失/失败做兜底：result 为 null 或 ok:false 时只给一条状态 finding，
+// 不访问后续字段——保证 IP 失败降级时报告不崩。
+function buildModules(rep) {
+  const R = rep.results || {}, S = rep.scores || {}, recsByMod = groupRecs(rep.recommendations);
+  const M = [];
+
+  const failFindings = (r) => r ? [['danger', `检测失败：${esc(r.error || '未知错误')}`]] : [['warn', '检测未完成']];
+
+  // IP
+  (() => {
+    const r = R.ip;
+    if (!r || !r.ok) { M.push({ key: 'ip', ic: '🌐', nm: 'IP 身份', score: S.ip || 0, sum: 'IP 信息不可用', findings: failFindings(r) }); return; }
+    const f = [
+      ['info', `地理位置 <b>${esc(r.countryName || r.country || '未知')} · ${esc(r.city || '?')}</b>`],
+      ['info', `运营商 <b>${esc(r.org || r.asn || '未知')}</b>`],
+      [r.isHosting ? 'danger' : 'ok', r.isHosting ? '检测到机房 / IDC IP' : '非机房 IP，来源为真实住宅宽带'],
+      [r.isProxy ? 'warn' : 'ok', r.isProxy ? '在风险库中被标记为代理' : '未被标记为代理']
+    ];
+    if (typeof r.riskScore === 'number') {
+      f.push([r.riskScore >= 75 ? 'danger' : r.riskScore >= 25 ? 'warn' : 'ok', `风险评分 ${r.riskScore}/100（越低越好）`]);
+    }
+    M.push({
+      key: 'ip', ic: '🌐', nm: 'IP 身份', score: S.ip || 0,
+      sum: `${esc(r.city || '?')} · ${ipType(r)} · 风险 ${r.riskScore ?? '?'}`,
+      findings: f,
+      kv: [['IP 类型', ipType(r)], ['公网 IP', esc(r.ip || '?')], ['国家 / 地区', `${esc(r.country || '?')} · ${esc(r.region || '?')}`], ['ASN', esc(r.asn || '?')], ['住宅 IP', r.isResidential ? '是' : '否']]
+    });
+  })();
+
+  // DNS
+  (() => {
+    const r = R.dns;
+    if (!r || !r.ok) { M.push({ key: 'dns', ic: '🧭', nm: 'DNS 检测', score: S.dns || 0, sum: 'DNS 检测不可用', findings: failFindings(r) }); return; }
+    const gips = r.tiktokGoogleIps || [], cips = r.tiktokCloudflareIps || [];
+    const cdnN = new Set([...gips, ...cips]).size;
+    const f = [
+      [r.bothDohReachable ? 'ok' : (r.googleReachable || r.cloudflareReachable) ? 'warn' : 'danger',
+        r.bothDohReachable ? 'DoH 双源可达（Google + Cloudflare）' : (r.googleReachable || r.cloudflareReachable) ? `仅 ${r.googleReachable ? 'Google' : 'Cloudflare'} DoH 可达，另一家被屏蔽` : 'Google / Cloudflare DoH 均不可达，可能被网络层过滤']
+    ];
+    if (r.baselineConsistent != null) {
+      f.push([r.baselineConsistent ? 'ok' : 'danger', r.baselineConsistent ? `${esc(r.baselineTarget)} 双源解析一致（非 CDN 基准）` : `${esc(r.baselineTarget)} 双源解析不一致 — 疑似 DNS 劫持`]);
+    }
+    if (r.tzCountryMatch === true) f.push(['ok', '时区与 IP 国家一致']);
+    else if (r.tzCountryMatch === false) f.push(['danger', '时区与 IP 国家不一致']);
+    else if (!r.ipCountryKnown) f.push(['info', '时区交叉校验：未执行（IP 国家未知）']);
+    if (gips.length || cips.length) f.push(['info', `${esc(r.target)} 解析到 ${cdnN} 个 CDN 节点（多节点为正常）`]);
+    f.push(['info', '完整 DNS 泄漏检测需付费版']);
+    M.push({
+      key: 'dns', ic: '🧭', nm: 'DNS 检测', score: S.dns || 0,
+      sum: `${r.bothDohReachable ? '双源可达' : '单源'} · ${r.tzCountryMatch ? '时区匹配' : '时区异常'} · ${cdnN} CDN 节点`,
+      findings: f,
+      kv: [
+        ['Google→tiktok', esc(gips.join(', ') || '（无）')],
+        ['CF→tiktok', esc(cips.join(', ') || '（无）')],
+        ['Google→基准', esc((r.baselineGoogleIps || []).join(', ') || '（无）')],
+        ['CF→基准', esc((r.baselineCloudflareIps || []).join(', ') || '（无）')],
+        ['浏览器时区', esc(r.timezone || '?')]
+      ]
+    });
+  })();
+
+  // WebRTC
+  (() => {
+    const r = R.webrtc;
+    if (!r || !r.ok) { M.push({ key: 'webrtc', ic: '🛰️', nm: 'WebRTC / IPv6 泄漏', score: S.webrtc || 0, sum: 'WebRTC 检测不可用', findings: failFindings(r) }); return; }
+    const srflx = r.srflxIps || [], local = r.realLocalIps || [], hosts = r.hostCandidates || [];
+    const f = [
+      [r.hasWebRtcLeak ? 'danger' : 'ok', r.referenced ? (r.hasWebRtcLeak ? 'WebRTC 泄漏真实公网 IP' : '无 WebRTC 公网 IP 泄漏，与代理 IP 一致') : `WebRTC 采集到 ${srflx.length} 个公网候选（缺少 IP 基准，未判定泄漏）`],
+      [r.ipv6Detected ? 'warn' : 'ok', r.ipv6Detected ? '检测到 IPv6 直连' : '未检测到 IPv6 直连'],
+      [local.length ? 'info' : 'ok', local.length ? `暴露内网 IP：${local.length} 个` : '内网 IP 已被浏览器匿名化（mDNS）']
+    ];
+    M.push({
+      key: 'webrtc', ic: '🛰️', nm: 'WebRTC / IPv6 泄漏', score: S.webrtc || 0,
+      sum: `${r.hasWebRtcLeak ? '有泄漏' : '无泄漏'} · ${r.ipv6Detected ? 'IPv6直连' : '无 IPv6'} · 内网${local.length ? '暴露' : '已匿名'}`,
+      findings: f,
+      kv: [
+        ['srflx 候选', esc(srflx.join(', ') || '（无）')],
+        ['对比基准 IP', esc(r.referenceIp || '（无）')],
+        ['IPv6 地址', esc(r.ipv6Address || '（无）')],
+        ['host 候选', esc(hosts.join(', ') || '（无）')]
+      ]
+    });
+  })();
+
+  // Stability
+  (() => {
+    const r = R.stability;
+    if (!r || !r.ok) { M.push({ key: 'stability', ic: '📈', nm: '网络稳定性', score: S.stability || 0, sum: '稳定性采样不可用', findings: failFindings(r) }); return; }
+    const o = r.overall || {};
+    const f = [
+      [o.latency <= 300 ? 'ok' : o.latency <= 500 ? 'warn' : 'danger', `平均延迟 ${o.latency}ms`],
+      [o.jitter <= 50 ? 'ok' : o.jitter <= 100 ? 'warn' : 'danger', `抖动 ${o.jitter}ms`],
+      [o.loss <= 1 ? 'ok' : o.loss <= 3 ? 'warn' : 'danger', `丢包率 ${o.loss}%`],
+      [o.tls == null ? 'info' : o.tls <= 400 ? 'ok' : o.tls <= 700 ? 'warn' : 'danger', o.tls == null ? 'TLS 握手：未测量' : `TLS 握手 ${o.tls}ms`]
+    ];
+    if (r.coarse) f.push(['info', '浏览器粗略测量模式（精度略低）']);
+    const cell = (v, g, w) => `<td class="${v <= g ? 'cell-good' : v <= w ? 'cell-warn' : 'cell-bad'}">${v}</td>`;
+    const rows = (r.perTarget || []).map(p =>
+      `<tr><td>${esc(p.host)}</td>${cell(p.latency, 300, 500)}${cell(p.jitter, 50, 100)}<td>${p.tls == null ? '−' : p.tls}</td>${cell(p.loss, 1, 3)}<td>${esc((p.protocols || []).join('/') || '−')}</td></tr>`
+    ).join('');
+    const tbl = `<div class="tbl-scroll"><table class="perf"><thead><tr><th>域名</th><th>延迟</th><th>抖动</th><th>TLS</th><th>丢包%</th><th>协议</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    M.push({
+      key: 'stability', ic: '📈', nm: '网络稳定性', score: S.stability || 0,
+      sum: `延迟 ${o.latency}ms · 抖动 ${o.jitter}ms · 丢包 ${o.loss}%`,
+      findings: f, table: tbl
+    });
+  })();
+
+  // Device
+  (() => {
+    const r = R.device;
+    if (!r || !r.ok) { M.push({ key: 'device', ic: '📱', nm: '设备一致性', score: S.device || 0, sum: '设备检测不可用', findings: failFindings(r) }); return; }
+    const sc = r.screen || {};
+    const f = [];
+    if (r.tzCountryMatch === true) f.push(['ok', `时区与 IP 国家一致：${esc(r.timezone || '?')}`]);
+    else if (r.tzCountryMatch === false) f.push(['danger', `时区与 IP 国家不一致：${esc(r.timezone || '?')} vs ${esc(r.ipCountry)}`]);
+    else f.push(['info', `时区：${esc(r.timezone || '?')}（未与 IP 国家交叉校验）`]);
+    if (r.langCountryMatch === true) f.push(['ok', `语言与 IP 国家一致：${esc(r.language || '?')}`]);
+    else if (r.langCountryMatch === false) f.push(['warn', `语言与 IP 国家不一致：${esc(r.language || '?')} vs ${esc(r.ipCountry)}`]);
+    else f.push(['info', `语言：${esc(r.language || '?')}`]);
+    if (r.uaScreenMatch === false) f.push(['warn', `UA 与屏幕不匹配：${sc.w}×${sc.h}`]);
+    else f.push(['ok', `UA 与屏幕匹配：${sc.w}×${sc.h}`]);
+    if (r.webglRenderer) f.push(['info', `GPU：${esc(String(r.webglRenderer).slice(0, 80))}`]);
+    M.push({
+      key: 'device', ic: '📱', nm: '设备一致性', score: S.device || 0,
+      sum: `时区/语言/UA ${(r.tzCountryMatch && r.langCountryMatch && r.uaScreenMatch) ? '全部匹配' : '有异常'} · ${esc(r.platform || '?')}`,
+      findings: f,
+      kv: [
+        ['User-Agent', esc(r.ua || '?')], ['平台', esc(r.platform || '?')], ['语言', esc((r.languages || []).join(', ') || '?')],
+        ['CPU / 内存', `${r.cores ?? '?'} 核 / ${r.memory ?? '?'}GB`], ['网络类型', esc(r.connType || '?')],
+        ['屏幕', `${sc.w}×${sc.h} @${sc.devicePixelRatio}x · ${sc.colorDepth}bit`],
+        ['Canvas 指纹', esc(String(r.canvasHash || '').slice(0, 32) + (r.canvasHash ? '…' : ''))],
+        ['WebGL', esc(r.webglRenderer || '?')]
+      ]
+    });
+  })();
+
+  // Reachability
+  (() => {
+    const r = R.reachability;
+    if (!r || !r.ok) { M.push({ key: 'reachability', ic: '🎯', nm: 'TikTok 可达性', score: S.reachability || 0, sum: '可达性探测不可用', findings: failFindings(r) }); return; }
+    const probes = r.probes || [];
+    const f = probes.map(p => [p.ok ? 'ok' : 'danger', `${esc(p.host)}：${p.ok ? `成功（${p.attempts === 1 ? '一次过' : p.attempts + ' 次'}）` : `失败（${p.attempts} 次后放弃）`}`]);
+    M.push({
+      key: 'reachability', ic: '🎯', nm: 'TikTok 可达性', score: S.reachability || 0,
+      sum: `${r.successes}/${r.totalProbes} 探针通 · 重试 ${r.totalRetries} 次`,
+      findings: f,
+      kv: probes.map(p => [(p.kind || '?').toUpperCase() + ' 首次耗时', `${p.firstAttemptMs}ms`]).concat([['总重试次数', String(r.totalRetries)]])
+    });
+  })();
+
+  return M.map(m => ({ ...m, recs: recsByMod[m.key] || [] }));
+}
+
+// ── 顶层渲染：把 payload 画进 rootEl（需含 #verdictH #verdictP #verdictMeta #topIssues #modList）──
+export function renderReport(rootEl, rep) {
+  const overall = rep.overall != null ? rep.overall : (rep.scores ? rep.scores.overall : 0);
+  const t = rep.tier || tierName(overall);
+  const T = TIERS[t] || TIERS.warning;
+
+  const q = (sel) => rootEl.querySelector(sel);
+  if (q('#verdictH')) q('#verdictH').textContent = T.verdict[0];
+  if (q('#verdictP')) q('#verdictP').textContent = T.verdict[1];
+  if (q('#verdictMeta')) q('#verdictMeta').textContent = rep.meta || '';
+
+  // Top issues — 引擎 topIssues 或前端按 severity 排序取前 3
+  const order = { danger: 0, warn: 1, info: 2 };
+  const top = (rep.topIssues && rep.topIssues.length ? rep.topIssues : [...(rep.recommendations || [])].sort((a, b) => order[a.severity] - order[b.severity]).slice(0, 3));
+  const tiEl = q('#topIssues');
+  if (tiEl) {
+    tiEl.innerHTML = top.length ? (
+      `<h4>${mk('warn')} 关键提醒 · TOP ${top.length}</h4>` +
+      top.map(r => {
+        const c = sevColor(r.severity === 'info' ? 'info' : r.severity);
+        const lbl = r.severity === 'danger' ? '严重' : r.severity === 'warn' ? '注意' : '说明';
+        return `<div class="ti-row"><span class="ti-badge" style="color:${c};background:${c}1f">${lbl}</span><span class="ti-txt"><b>${esc(r.title)}</b> · <span>${esc(r.body)}</span></span></div>`;
+      }).join('')
+    ) : '';
+  }
+
+  // Modules
+  const modList = q('#modList');
+  if (modList) {
+    const mods = buildModules(rep);
+    modList.innerHTML = mods.map((m, i) => {
+      const st = worst(m.findings.map(f => f[0]));
+      const recTag = m.recs.length ? `<span class="rec-tag">${m.recs.length} 条建议</span>` : '';
+      const findings = m.findings.map(f => `<div class="finding">${mk(f[0])}<span class="ftx">${f[1]}</span></div>`).join('');
+      const kv = m.kv ? `<dl class="kv">${m.kv.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>` : '';
+      const tbl = m.table || '';
+      const recs = m.recs.length ? `<div class="recs">${m.recs.map(r => `<div class="rec ${esc(r.severity)}"><b>${esc(r.title)}</b><span>${esc(r.body)}</span></div>`).join('')}</div>` : '';
+      return `<div class="modcard ${i === 0 ? 'open' : ''}" data-mi="${i}">
+        <div class="mod-head">
+          <span class="mod-ic">${m.ic}</span>
+          <div class="mod-main"><div class="mod-nm">${m.nm} ${recTag}</div><div class="mod-sum">${m.sum}</div></div>
+          <span class="mod-score" style="color:${scoreColor(m.score)}">${m.score}</span>
+          ${dot(st)}
+          <span class="mod-chev">▼</span>
+        </div>
+        <div class="mod-body"><div class="mod-inner">
+          <div class="findings">${findings}</div>${kv}${tbl}${recs}
+        </div></div>
+      </div>`;
+    }).join('');
+    modList.querySelectorAll('.mod-head').forEach(h => {
+      h.onclick = () => h.parentElement.classList.toggle('open');
+    });
+  }
+
+  return T; // 供调用方（首页）拿 tier 文案/颜色去点亮仪表 pill
+}
+
+export { TIERS };

@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0a0e1a">
+  <meta name="theme-color" content="#0b0c10">
   <title>小白兔TKNC 网络体检报告</title>
   <meta name="description" content="一份 TikTok 网络环境体检报告：IP 质量、DNS、WebRTC 泄漏、网络稳定性全维度评分。你的网络达标吗？">
-  <!-- Open Graph — controls the preview card when pasted into 微信 / 抖音 / QQ -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="小白兔TKNC 网络体检报告 — 你的网络达标吗？">
   <meta property="og:description" content="6 项维度全测完，30 秒一份体检报告。TikTok 创作者来测测自己的网络环境 👇">
@@ -20,23 +19,26 @@
   <link rel="stylesheet" href="css/report.css">
 </head>
 <body>
-  <main class="app">
-    <header class="brand-chip mb-4">
-      <span class="brand-mark">🐰</span>
-      <span>小白兔TKNC · 分享报告</span>
-    </header>
 
-    <div id="share-root">
-      <div class="card center">
-        <p class="muted">正在加载报告<span class="dots"></span></p>
-      </div>
-    </div>
+<nav class="nav">
+  <div class="nav-in">
+    <div class="brand"><span class="dot">🐰</span>小白兔TKNC<small>· 分享报告</small></div>
+    <a class="gh" href="./">我也要检测 →</a>
+  </div>
+</nav>
 
-    <div class="center mt-5">
-      <a href="./" class="btn btn-primary">我也要检测</a>
-    </div>
-  </main>
+<div class="share-page">
+  <div id="share-root">
+    <div class="share-loading">正在加载报告…</div>
+  </div>
+</div>
 
-  <script type="module" src="app/ui/share.js"></script>
+<footer class="footer">
+  <div class="wrap">
+    <div class="built"><span class="spark">✦</span>此网站使用 <b>Claude Fable 5</b> 开发</div>
+  </div>
+</footer>
+
+<script type="module" src="app/ui/share.js"></script>
 </body>
 </html>

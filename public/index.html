@@ -1,186 +1,187 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-  <meta name="format-detection" content="telephone=no">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#0a0e1a">
-  <title>小白兔TKNC · 30 秒查出你 TikTok 0 播放的网络真相</title>
-  <meta name="description" content="专为 TikTok 养号场景设计：30 秒检测 IP 质量、DNS、WebRTC 泄漏、网络稳定性等 6 项维度，给出 0-100 分体检报告与改进建议。">
-  <!-- Open Graph — controls the preview card when pasted into 微信 / 抖音 / QQ -->
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="30 秒查出你 TikTok 0 播放的网络真相">
-  <meta property="og:description" content="内容一样，别人爆你 0 播放？问题可能在网络环境。6 项维度，30 秒出体检报告 👇">
-  <meta property="og:image" content="og.png">
-  <meta property="og:site_name" content="小白兔TKNC">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/report.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0c10">
+<title>小白兔TKNC · TikTok 网络环境体检仪</title>
+<meta name="description" content="30 秒查出你 TikTok 0 播放的网络真相。6 项诊断维度，仪表级报告，具体到 IP 质量、DNS、WebRTC 泄漏、线路稳定性。">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/report.css">
 </head>
 <body>
-  <main class="app">
 
-    <!-- ───────── Phase 1: Landing ───────── -->
-    <section id="phase-landing" class="phase">
-      <header class="brand-chip">
-        <span class="brand-mark">🐰</span>
-        <span>小白兔TKNC</span>
-      </header>
+<!-- == NAV == -->
+<nav class="nav">
+  <div class="nav-in">
+    <div class="brand"><span class="dot">🐰</span>小白兔TKNC<small>NETCHECK</small></div>
+    <a class="gh" href="https://github.com/" target="_blank" rel="noopener" aria-label="GitHub">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+  </div>
+</nav>
 
-      <div class="hero">
-        <div class="hero-badge">🎯 专为 TikTok 养号场景设计</div>
-        <h1>30 秒查出<br>你 TikTok 0 播放的<br>网络层真相</h1>
-        <p>内容一样，别人爆你 0 播放？<br>问题可能不在内容，在<strong>网络环境</strong>。</p>
-      </div>
+<div class="wrap">
 
-      <div class="stat-row">
-        <div class="stat"><div class="stat-num">6</div><div class="stat-label">检测维度</div></div>
-        <div class="stat"><div class="stat-num">30s</div><div class="stat-label">出体检报告</div></div>
-        <div class="stat"><div class="stat-num">0-100</div><div class="stat-label">一眼看懂的分</div></div>
-      </div>
+  <!-- == SPONSORS == -->
+  <section class="sponsors">
+    <div class="sp-head">
+      <span class="sp-title">赞助商 · SPONSORED</span>
+      <button class="sp-cta" id="spCta">想出现在这里？ →</button>
+    </div>
+    <div class="sp-scroller" id="spList"></div>
+    <div class="built-row"><div class="built"><span class="spark">✦</span>此网站使用 <b>Claude Fable 5</b> 开发</div></div>
+  </section>
 
-      <ul class="feature-list" aria-label="检测项">
-        <li><span class="fi">🌐</span><div><div class="ft">IP 身份</div><div class="fd">机房 IP 还是住宅 IP，ASN 与风险评分</div></div></li>
-        <li><span class="fi">🧭</span><div><div class="ft">DNS 检测</div><div class="fd">DoH 跨源对比 + 时区交叉校验</div></div></li>
-        <li><span class="fi">🛰️</span><div><div class="ft">WebRTC / IPv6 泄漏</div><div class="fd">代理有没有暴露你的真实 IP</div></div></li>
-        <li><span class="fi">📈</span><div><div class="ft">网络稳定性</div><div class="fd">30 秒持续采样：延迟、抖动、丢包</div></div></li>
-        <li><span class="fi">📱</span><div><div class="ft">设备一致性</div><div class="fd">时区/语言/指纹与 IP 是否对得上</div></div></li>
-        <li><span class="fi">🎯</span><div><div class="ft">TikTok 可达性</div><div class="fd">直接探测官方域名通不通</div></div></li>
-      </ul>
+  <!-- == CHECKER CONSOLE (single container, 3 states) == -->
+  <section class="console">
+    <div class="eyebrow">TIKTOK 网络环境 · <b>诊断仪</b></div>
+    <h1 class="headline">30 秒查出你 TikTok<br><span class="hl">0 播放的网络真相</span></h1>
+    <p class="subline">内容一样，别人爆你 0 播放？问题可能不在内容，在<b>网络环境</b>。</p>
 
-      <div class="consent-bar">
-        <label class="check">
-          <input type="checkbox" id="consent">
-          <span>同意检测会查询第三方 IP 信息服务。<strong>不存储你的原始 IP</strong>，仅匿名保留派生指标 7 天用于分享。</span>
-        </label>
-      </div>
-
-      <div class="sticky-cta">
-        <button id="btn-start" class="btn btn-primary btn-lg btn-block" disabled>
-          开始检测 · 30 秒出报告
-        </button>
-        <p class="cta-hint">请用<strong>需要检测的那台手机</strong>、连<strong>需要检测的那个网络</strong>打开</p>
-      </div>
-    </section>
-
-    <!-- ───────── Phase 2: Progress ───────── -->
-    <section id="phase-progress" class="phase" hidden>
-      <header class="brand-chip mb-4">
-        <span class="brand-mark">🐰</span>
-        <span>小白兔TKNC</span>
-      </header>
-
-      <div class="score-circle-wrap">
-        <div class="score-circle indeterminate" id="progress-ring">
-          <svg width="180" height="180" viewBox="0 0 180 180">
-            <circle class="bg-ring" cx="90" cy="90" r="80" stroke-width="10" fill="none"/>
-            <circle class="fg-ring" cx="90" cy="90" r="80" stroke-width="10" fill="none"/>
-          </svg>
-          <div class="score-value">
-            <div class="num" id="progress-count">0</div>
-            <div class="grade">/ 6 模块</div>
-          </div>
+    <div class="gauge-wrap">
+      <div class="gauge">
+        <svg viewBox="0 0 230 230">
+          <circle class="arc-bg" cx="115" cy="115" r="98"
+                  stroke-dasharray="461.8 615.7" transform="rotate(135 115 115)"/>
+          <circle class="arc-fg" id="arcFg" cx="115" cy="115" r="98" stroke="url(#gg)"
+                  stroke-dasharray="461.8 615.7" stroke-dashoffset="461.8" transform="rotate(135 115 115)"/>
+          <defs>
+            <linearGradient id="gg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#34e3b0"/><stop offset="1" stop-color="#37b6ff"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="gauge-face">
+          <div class="gauge-emoji" id="gEmoji">🐰</div>
+          <div class="gauge-num" id="gNum">--</div>
+          <div class="gauge-cap">综合评分</div>
         </div>
       </div>
-
-      <p class="status-line" id="status-line">正在准备<span class="dots"></span></p>
-
-      <ol class="module-list" id="module-list">
-        <li class="module-row" data-module="ip">
-          <span class="module-icon">🌐</span>
-          <span class="module-name">IP 身份</span>
-          <span class="module-state" data-state="pending">等待</span>
-        </li>
-        <li class="module-row" data-module="dns">
-          <span class="module-icon">🧭</span>
-          <span class="module-name">DNS</span>
-          <span class="module-state" data-state="pending">等待</span>
-        </li>
-        <li class="module-row" data-module="webrtc">
-          <span class="module-icon">🛰️</span>
-          <span class="module-name">WebRTC / IPv6 泄漏</span>
-          <span class="module-state" data-state="pending">等待</span>
-        </li>
-        <li class="module-row" data-module="stability">
-          <span class="module-icon">📈</span>
-          <span class="module-name">网络稳定性（30s）</span>
-          <span class="module-state" data-state="pending">等待</span>
-        </li>
-        <li class="module-row" data-module="device">
-          <span class="module-icon">📱</span>
-          <span class="module-name">设备一致性</span>
-          <span class="module-state" data-state="pending">等待</span>
-        </li>
-        <li class="module-row" data-module="reachability">
-          <span class="module-icon">🎯</span>
-          <span class="module-name">TikTok 可达性</span>
-          <span class="module-state" data-state="pending">等待</span>
-        </li>
-      </ol>
-
-      <div class="center mt-5">
-        <button id="btn-cancel" class="btn btn-ghost">取消检测</button>
+      <div class="tier-pill" id="tierPill" style="display:none">
+        <span class="tdot"></span><span id="tierTxt"></span>
       </div>
-    </section>
+    </div>
 
-    <!-- ───────── Phase 3: Report ───────── -->
-    <section id="phase-report" class="phase" hidden>
-      <!-- Screenshot-friendly card: brand + score + verdict stay together -->
-      <div class="report-hero" id="report-hero">
-        <header class="brand-chip mb-3">
-          <span class="brand-mark">🐰</span>
-          <span>小白兔TKNC</span>
-          <span class="brand-tag">网络体检报告</span>
-        </header>
+    <!-- scan list (state B) -->
+    <ol class="scanlist" id="scanList">
+      <li class="scan-row" data-m="ip"><span class="scan-ic">🌐</span><span class="scan-nm">IP 身份</span><span class="scan-st">等待</span></li>
+      <li class="scan-row" data-m="dns"><span class="scan-ic">🧭</span><span class="scan-nm">DNS 检测</span><span class="scan-st">等待</span></li>
+      <li class="scan-row" data-m="webrtc"><span class="scan-ic">🛰️</span><span class="scan-nm">WebRTC / IPv6 泄漏</span><span class="scan-st">等待</span></li>
+      <li class="scan-row" data-m="stability"><span class="scan-ic">📈</span><span class="scan-nm">网络稳定性</span><span class="scan-st">等待</span></li>
+      <li class="scan-row" data-m="device"><span class="scan-ic">📱</span><span class="scan-nm">设备一致性</span><span class="scan-st">等待</span></li>
+      <li class="scan-row" data-m="reachability"><span class="scan-ic">🎯</span><span class="scan-nm">TikTok 可达性</span><span class="scan-st">等待</span></li>
+    </ol>
 
-        <div class="score-circle-wrap">
-          <div class="score-circle" id="overall-ring">
-            <svg width="180" height="180" viewBox="0 0 180 180">
-              <circle class="bg-ring" cx="90" cy="90" r="80" stroke-width="10" fill="none"/>
-              <circle class="fg-ring" cx="90" cy="90" r="80" stroke-width="10" fill="none"
-                      stroke-dasharray="502.65" stroke-dashoffset="502.65"/>
-            </svg>
-            <div class="score-value">
-              <div class="num" id="overall-score">--</div>
-              <div class="grade">总分</div>
-            </div>
-          </div>
-          <div class="tier-label" id="overall-tier-label">--</div>
-          <p class="verdict-line" id="verdict-line">--</p>
-          <div class="report-meta" id="report-meta">--</div>
-        </div>
+    <!-- CTA zone (state A) -->
+    <div class="cta-zone" id="ctaZone">
+      <button class="btn-primary" id="btnStart">开始检测 · 30 秒出报告</button>
+      <div class="stat-strip"><span><b>6</b> 项诊断</span><span><b>~30</b> 秒</span><span><b>0–100</b> 分</span></div>
+      <p class="tip">请用<b>需要检测的那台手机</b>、连<b>需要检测的那个网络</b>打开</p>
+      <p class="consent">点击开始即表示同意 <a href="#faq">隐私声明</a></p>
+    </div>
+
+    <!-- cancel zone (state B only, toggled by app.js) -->
+    <div class="cta-zone" id="cancelZone" style="display:none">
+      <button class="btn-ghost" id="btnCancel">取消检测</button>
+    </div>
+
+    <!-- REPORT (state C) -->
+    <div class="report" id="report">
+      <div class="verdict">
+        <h3 id="verdictH">--</h3>
+        <p id="verdictP">--</p>
+        <div class="meta" id="verdictMeta"></div>
       </div>
-
-      <div id="report-sections"></div>
-
-      <!-- Share block — the social-promotion core -->
-      <div class="share-block">
-        <div class="share-hint" id="share-hint">📸 截图本页即可分享，或生成专属链接</div>
-        <div class="report-actions">
-          <button id="btn-share" class="btn btn-primary btn-block">生成我的分享报告</button>
-        </div>
-        <div id="share-result" class="share-result" hidden>
-          <div class="share-copy-box" id="share-copy-text"></div>
-          <div class="share-btn-row">
-            <button id="btn-copy-copy" class="btn btn-primary">复制分享文案</button>
-            <button id="btn-copy-link" class="btn btn-secondary">复制链接</button>
-          </div>
-          <div class="share-expiry" id="share-expiry">分享链接 7 天内有效</div>
-        </div>
-        <button id="btn-rerun" class="btn btn-ghost btn-block mt-3">重新检测</button>
+      <div class="topissues" id="topIssues"></div>
+      <div id="modList"></div>
+      <div class="report-actions">
+        <button class="btn-primary" id="btnShare" style="max-width:340px">生成分享文案</button>
+        <div class="share-out" id="shareOut"></div>
+        <p class="share-hint" id="shareHint" hidden></p>
+        <button class="btn-ghost" id="btnRerun">重新检测</button>
       </div>
-    </section>
+    </div>
+  </section>
 
-  </main>
+  <!-- == WHAT SIGNALS == -->
+  <section class="section">
+    <div class="sec-h">检测哪些信号</div>
+    <h2 class="sec-t">6 项维度，覆盖 TikTok 判定环境的每个破绽</h2>
+    <div class="grid6">
+      <div class="sig"><div class="si">🌐</div><h4>IP 身份</h4><p>机房 IP 还是住宅 IP，ASN 与风险评分</p><div class="w">权重 25</div></div>
+      <div class="sig"><div class="si">🧭</div><h4>DNS 检测</h4><p>DoH 双源对比 + 时区交叉校验</p><div class="w">权重 15</div></div>
+      <div class="sig"><div class="si">🛰️</div><h4>WebRTC 泄漏</h4><p>代理有没有暴露你的真实 IP</p><div class="w">权重 15</div></div>
+      <div class="sig"><div class="si">📈</div><h4>网络稳定性</h4><p>30 秒采样：延迟 / 抖动 / 丢包</p><div class="w">权重 25</div></div>
+      <div class="sig"><div class="si">📱</div><h4>设备一致性</h4><p>时区 / 语言 / 指纹与 IP 对不对得上</p><div class="w">权重 10</div></div>
+      <div class="sig"><div class="si">🎯</div><h4>TikTok 可达性</h4><p>直接探测官方域名通不通</p><div class="w">权重 10</div></div>
+    </div>
+  </section>
 
-  <!-- App entry (ES modules). Cloud functions are called via HTTP Access Service,
-       no CloudBase SDK needed. -->
-  <script type="module" src="app/app.js"></script>
+  <!-- == PRINCIPLE == -->
+  <section class="section">
+    <div class="sec-h">检测原理</div>
+    <h2 class="sec-t">TikTok 靠"信号不一致"识别可疑环境</h2>
+    <p class="prin-lead">
+      代理能换掉你的 IP，却换不掉手机的时区、语言、指纹和线路质量。我们把 TikTok 会查的信号自己先查一遍，用规则打分——分三类：
+    </p>
+    <div class="principles">
+      <div class="prin"><div class="prin-n">01</div><div><h4>身份类 · 你这个 IP 干不干净</h4><p>是机房 IP 还是住宅 IP、ASN 归属、是否被风险库标记为代理、<b>风险评分</b>多高。机房 IP 是养号大忌。</p></div></div>
+      <div class="prin"><div class="prin-n">02</div><div><h4>一致性类 · 各处身份对不对得上</h4><p>时区 vs IP 国家、语言 vs IP 国家、WebRTC 暴露的公网 IP vs 代理 IP、UA vs 屏幕。<b>"IP 在美国、时区在上海"就是一眼被识破的破绽</b>。</p></div></div>
+      <div class="prin"><div class="prin-n">03</div><div><h4>质量类 · 线路能不能扛住发视频</h4><p>30 秒持续采样 TikTok 域名的<b>延迟、抖动、丢包、TLS 握手</b>。丢包超 2% 就会上传失败、直播掉线。</p></div></div>
+    </div>
+  </section>
+
+  <!-- == FAQ == -->
+  <section class="section" id="faq">
+    <div class="sec-h">常见问题</div>
+    <h2 class="sec-t">FAQ</h2>
+    <div id="faqList">
+      <div class="faq-item"><button class="faq-q">0 播放真的和网络有关系吗？<span class="fc">＋</span></button><div class="faq-a"><div class="inner">有。TikTok 在推流前会评估你的网络环境是否「可信」。机房 IP、DNS 与时区不匹配、WebRTC 泄漏真实 IP 等信号，会让算法判定为「高风险环境」，从而限制初始推荐量——表现就是内容不错却 0 播放。</div></div></div>
+      <div class="faq-item"><button class="faq-q">检测安全吗？会不会暴露账号？<span class="fc">＋</span></button><div class="faq-a"><div class="inner">安全。检测全程在你的浏览器本地发起网络请求，不需要登录 TikTok、不碰你的账号密码。我们不存储你的原始公网 IP、真实内网 IP 和 Canvas 指纹原图，只保留匿名派生指标最多 7 天。</div></div></div>
+      <div class="faq-item"><button class="faq-q">分数多少算合格？<span class="fc">＋</span></button><div class="faq-a"><div class="inner">90+ 优秀，可放心养号发布；70–89 良好，优化少数项即可；50–69 警告，存在风险，不建议发新视频；50 以下危险，建议立即排查环境再操作。</div></div></div>
+      <div class="faq-item"><button class="faq-q">多久检测一次比较好？<span class="fc">＋</span></button><div class="faq-a"><div class="inner">每次换 IP、换网络、换代理线路后都建议测一次；稳定使用时一周一次即可。检测要用真正发视频的那台手机、那个网络。</div></div></div>
+      <div class="faq-item"><button class="faq-q">机房 IP 和住宅 IP 有什么区别？<span class="fc">＋</span></button><div class="faq-a"><div class="inner">机房 / IDC IP 来自数据中心（AWS、Vultr 等），一个 IP 段被大量用户共用，TikTok 极易识别为代理，是养号大忌；住宅 IP 来自真实家庭宽带（如 Comcast），干净、风险低，是养号首选。</div></div></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- == FOOTER == -->
+<footer class="footer">
+  <div class="wrap">
+    <p class="foot-priv">
+      隐私声明：本工具<b>不存储你的原始公网 IP</b>、不存 WebRTC 泄漏的真实 IP、不存 Canvas 指纹原图（仅 SHA-256 哈希）。匿名派生指标最多保留 7 天用于分享，之后自动删除，不向第三方出售任何数据。
+    </p>
+    <div class="foot-links">
+      <a href="https://github.com/" target="_blank" rel="noopener">MIT License</a>
+      <a href="https://github.com/" target="_blank" rel="noopener">GitHub 开源</a>
+      <a href="#" id="footWx">联系管理员</a>
+    </div>
+  </div>
+</footer>
+
+<!-- == WECHAT SHEET == -->
+<div class="mask" id="wxMask">
+  <div class="sheet">
+    <div class="grip"></div>
+    <h3>让你的品牌出现在这里</h3>
+    <p class="lead">每天有大量 TikTok 从业者在这检测网络环境——<b>正是你的精准客户</b>。加管理员微信，备注"赞助"，当天可上线。</p>
+    <div class="qr-box"><img src="assets/wechat-qr.jpg" alt="管理员微信二维码"></div>
+    <p class="qr-cap">扫码添加 · 拿铁伴夏（湖南 长沙）</p>
+    <div class="wx-row">
+      <div><div class="wl">管理员微信号</div><div class="wid" id="wxId">zac201299</div></div>
+      <button class="wx-copy" id="wxCopy">复制</button>
+    </div>
+    <button class="close" id="wxClose">关闭</button>
+  </div>
+</div>
+
+<script type="module" src="app/app.js"></script>
 </body>
 </html>

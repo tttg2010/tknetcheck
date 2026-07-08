@@ -1,220 +1,91 @@
-/* Report-specific styles */
-.report-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--sp-4);
-}
+/* ============================================================
+   小白兔TKNC — 报告态（state C）：结论 / TopN / 逐模块卡 / findings /
+   KV 明细 / 稳定性逐域名表 / 建议卡 / 分享输出
+   同一套样式被首页报告态与 share.html 复用。
+   ============================================================ */
 
-.report-meta {
-  color: var(--text-dim);
-  font-size: var(--fs-xs);
-  text-align: center;
-  margin-top: var(--sp-2);
-}
+.report{display:none;margin-top:20px}
+.report.on{display:block}
 
-/* Section card */
-.section {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  padding: var(--sp-5);
-  margin-bottom: var(--sp-3);
-}
-.section-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--sp-4);
-}
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  font-size: var(--fs-lg);
-  font-weight: 600;
-}
-.section-icon {
-  width: 32px; height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--panel-2);
-  border-radius: var(--r-md);
-  font-size: 16px;
-}
+/* verdict */
+.verdict{text-align:center;margin-bottom:16px}
+.verdict h3{font-size:19px;font-weight:750;margin-bottom:4px}
+.verdict p{color:var(--ink-2);font-size:13.5px}
+.verdict .meta{color:var(--ink-4);font-size:11.5px;font-family:var(--mono);margin-top:8px}
 
-/* Findings list */
-.findings {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
+/* top issues */
+.topissues{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 16px;margin-bottom:14px;
 }
-.findings li {
-  display: flex;
-  gap: var(--sp-2);
-  align-items: flex-start;
-  font-size: var(--fs-sm);
-}
-.findings .marker { flex-shrink: 0; width: 16px; line-height: 1.5; }
-.findings .marker.ok      { color: var(--ok); }
-.findings .marker.warn    { color: var(--warn); }
-.findings .marker.danger  { color: var(--danger); }
-.findings .marker.info    { color: var(--info); }
+.topissues:empty{display:none}
+.topissues h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.ti-row{display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.ti-row:first-of-type{border-top:none}
+.ti-badge{flex-shrink:0;width:44px;height:20px;border-radius:6px;font-size:10.5px;font-weight:700;display:grid;place-items:center;letter-spacing:.03em}
+.ti-txt b{color:var(--ink)}
+.ti-txt span{color:var(--ink-3)}
 
-/* Recommendations panel */
-.recs {
-  margin-top: var(--sp-4);
-  padding: var(--sp-3);
-  background: rgba(0,212,255,0.06);
-  border-left: 3px solid var(--brand);
-  border-radius: var(--r-sm);
-  font-size: var(--fs-sm);
-}
-.recs h5 {
-  margin: 0 0 var(--sp-2) 0;
-  font-size: var(--fs-sm);
-  color: var(--brand);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.recs ol { padding-left: var(--sp-4); margin: 0; }
-.recs li { margin-bottom: var(--sp-1); }
+/* module cards */
+.modcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-bottom:9px;overflow:hidden;transition:border-color .18s}
+.modcard.open{border-color:var(--line-2)}
+.mod-head{display:flex;align-items:center;gap:12px;padding:14px 15px;cursor:pointer;user-select:none}
+.mod-ic{width:26px;text-align:center;font-size:17px;flex-shrink:0}
+.mod-main{flex:1;min-width:0}
+.mod-nm{font-weight:650;font-size:14.5px;display:flex;align-items:center;gap:8px}
+.mod-sum{font-size:12px;color:var(--ink-3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono)}
+.mod-score{font-family:var(--mono);font-weight:700;font-size:17px;flex-shrink:0}
+.mod-stdot{width:8px;height:8px;border-radius:99px;flex-shrink:0}
+.mod-chev{color:var(--ink-4);font-size:11px;transition:transform .22s;flex-shrink:0}
+.modcard.open .mod-chev{transform:rotate(180deg)}
+.rec-tag{font-size:10px;font-weight:600;color:var(--warn);border:1px solid rgba(247,182,75,.3);background:rgba(247,182,75,.08);border-radius:5px;padding:1px 6px}
 
-/* Per-target table for stability module */
-.target-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--fs-xs);
-  margin-top: var(--sp-3);
-}
-.target-table th, .target-table td {
-  padding: var(--sp-2) var(--sp-2);
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-  font-variant-numeric: tabular-nums;
-}
-.target-table th {
-  color: var(--text-dim);
-  font-weight: 500;
-  text-transform: uppercase;
-  font-size: 11px;
-  letter-spacing: 0.05em;
-}
-.target-table td.host { color: var(--text-muted); word-break: break-all; }
+.mod-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.modcard.open .mod-body{max-height:2000px}
+.mod-inner{padding:2px 15px 15px;border-top:1px solid var(--line)}
 
-/* Actions bar */
-.report-actions {
-  display: flex;
-  gap: var(--sp-3);
-  margin-top: var(--sp-5);
-  flex-wrap: wrap;
-}
-.report-actions .btn { flex: 1; min-width: 0; }
+/* findings */
+.findings{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.finding{display:flex;gap:9px;font-size:13px;align-items:flex-start}
+.mk{width:16px;height:16px;border-radius:99px;flex-shrink:0;margin-top:2px;display:grid;place-items:center;font-size:9px;font-weight:800;color:#0b0c10}
+.finding .ftx{color:var(--ink-2)}
+.finding .ftx b{color:var(--ink)}
 
-/* ── Screenshot-friendly report hero card ───────────────────────────── */
-.report-hero {
-  background: linear-gradient(160deg, var(--panel) 0%, var(--bg-elevated) 100%);
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  padding: var(--sp-5) var(--sp-4) var(--sp-6);
-  margin-bottom: var(--sp-4);
-  position: relative;
-  overflow: hidden;
-}
-.report-hero::before {
-  content: "";
-  position: absolute;
-  top: -120px;
-  right: -80px;
-  width: 280px;
-  height: 280px;
-  background: radial-gradient(circle, rgba(0, 212, 255, 0.15), transparent 70%);
-  pointer-events: none;
-}
-.report-hero .brand-chip { position: relative; }
-.brand-tag {
-  margin-left: auto;
-  font-size: var(--fs-xs);
-  color: var(--text-dim);
-  font-weight: 400;
-}
+/* detail kv grid */
+.kv{margin-top:13px;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12.5px;
+    background:var(--inset);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 13px}
+.kv dt{color:var(--ink-3)}
+.kv dd{font-family:var(--mono);color:var(--ink);text-align:right;word-break:break-all;font-size:12px}
+.kv dd.wrap-l{text-align:left}
 
-/* Quotable verdict line — the screenshot-worthy one-liner */
-.verdict-line {
-  text-align: center;
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  margin: var(--sp-3) auto 0;
-  max-width: 15em;
-  line-height: 1.45;
-}
-.verdict-line.tier-excellent { color: var(--tier-excellent); }
-.verdict-line.tier-good      { color: var(--tier-good); }
-.verdict-line.tier-warning   { color: var(--tier-warning); }
-.verdict-line.tier-danger    { color: var(--tier-danger); }
+/* stability table */
+.tbl-scroll{margin-top:13px;overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-sm)}
+table.perf{width:100%;border-collapse:collapse;font-size:11.5px;min-width:440px}
+table.perf th,table.perf td{padding:8px 10px;text-align:right;white-space:nowrap;font-family:var(--mono)}
+table.perf th{color:var(--ink-3);font-weight:600;background:var(--inset);border-bottom:1px solid var(--line);letter-spacing:.02em;font-family:var(--sans)}
+table.perf td:first-child,table.perf th:first-child{text-align:left;color:var(--ink);position:sticky;left:0;background:var(--surface)}
+table.perf tr td{border-bottom:1px solid var(--line)}
+table.perf tr:last-child td{border-bottom:none}
+.cell-good{color:var(--good)}.cell-warn{color:var(--warn)}.cell-bad{color:var(--bad)}
 
-/* ── Share block (social-promotion core) — sticky bottom CTA ────────── */
-.share-block {
-  position: sticky;
-  bottom: var(--sp-4);
-  margin-top: var(--sp-5);
-  margin-left: calc(-1 * var(--sp-4));
-  margin-right: calc(-1 * var(--sp-4));
-  margin-bottom: 0;
-  padding: var(--sp-5) var(--sp-4) var(--sp-6);
-  background: linear-gradient(to top, var(--bg) 60%, transparent);
-  border: 1px solid var(--border);
-  border-left: none;
-  border-right: none;
-  border-bottom: none;
-  border-radius: 0;
-}
-.share-hint {
-  text-align: center;
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
-  margin-bottom: var(--sp-4);
-}
-.share-block .report-actions {
-  margin-top: 0;
-}
+/* recs inside module */
+.recs{margin-top:13px;display:flex;flex-direction:column;gap:8px}
+.rec{border-left:3px solid var(--warn);background:var(--surface-2);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:9px 12px;font-size:12.5px}
+.rec.danger{border-color:var(--bad)}.rec.info{border-color:var(--ok)}
+.rec b{display:block;margin-bottom:2px;font-size:13px}
+.rec span{color:var(--ink-3);line-height:1.5}
 
-/* Share result — shown after generating */
-.share-result {
-  margin-top: var(--sp-4);
+/* report actions + share output */
+.report-actions{margin-top:16px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.share-out{width:100%;background:var(--inset);border:1px solid var(--line);border-radius:var(--r);padding:13px;font-size:12.5px;color:var(--ink-2);line-height:1.6;display:none;white-space:pre-wrap;word-break:break-word}
+.share-out.on{display:block}
+.share-hint{color:var(--ink-4);font-size:11.5px;text-align:center}
+
+/* share.html standalone wrapper */
+.share-page{max-width:var(--maxw);margin:0 auto;padding:20px 18px calc(40px + var(--safe-bottom))}
+.share-page .report{display:block;margin-top:0}
+.share-cta{margin-top:22px;display:flex;justify-content:center}
+.share-loading,.share-error{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:28px 20px;text-align:center;color:var(--ink-2);font-size:13.5px;margin-top:20px;
 }
-.share-copy-box {
-  background: var(--bg-elevated);
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--r-md);
-  padding: var(--sp-4);
-  font-size: var(--fs-sm);
-  line-height: 1.7;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: var(--text);
-  margin-bottom: var(--sp-3);
-}
-.share-btn-row {
-  display: flex;
-  gap: var(--sp-3);
-}
-.share-btn-row .btn {
-  flex: 1;
-  min-width: 0;
-}
-.btn.copied {
-  background: var(--ok) !important;
-  color: #fff !important;
-  box-shadow: none !important;
-}
-.share-expiry {
-  text-align: center;
-  font-size: var(--fs-xs);
-  color: var(--text-dim);
-  margin-top: var(--sp-3);
-}
+.share-error .ic{font-size:26px;margin-bottom:8px}

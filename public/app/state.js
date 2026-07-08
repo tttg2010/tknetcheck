@@ -20,6 +20,9 @@ export const state = {
     overall: 0
   },
   recommendations: [],
+  tier: null,
+  topIssues: [],
+  configVersion: null,
   errors: {},
   shareId: null,
   shareExpiresAt: null
@@ -48,6 +51,9 @@ export function resetState() {
   state.shareId = null;
   state.shareExpiresAt = null;
   state.recommendations = [];
+  state.tier = null;
+  state.topIssues = [];
+  state.configVersion = null;
   for (const k of Object.keys(state.results)) state.results[k] = null;
   for (const k of Object.keys(state.scores)) state.scores[k] = 0;
   state.errors = {};

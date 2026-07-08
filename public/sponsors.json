@@ -1,0 +1,40 @@
+[
+  {
+    "id": "salpy-dy",
+    "name": "Salpy 抖音版",
+    "slogan": "AI 视频创作，专为抖音",
+    "desc": "面向抖音生态的 AI 视频工具，从想法到成片一站搞定",
+    "emoji": "🎬",
+    "url": "https://dy.salpy.com/",
+    "tier": "gold",
+    "order": 1,
+    "startAt": "2026-07-08",
+    "endAt": "2027-12-31"
+  },
+  {
+    "id": "mantflow",
+    "name": "MantFlow 曼塔",
+    "slogan": "每条视频，为销售额负责",
+    "desc": "TikTok 带货视频 AI 生成 + 数据迭代，越用越懂你的品类",
+    "emoji": "🪄",
+    "logo": "assets/sponsors/mantflow-logo.png",
+    "url": "https://www.mantflow.com/",
+    "tier": "gold",
+    "order": 2,
+    "startAt": "2026-07-08",
+    "endAt": "2027-12-31"
+  },
+  {
+    "id": "salpx",
+    "name": "SalpX 果冻鱼",
+    "slogan": "一个 API，连接全球大模型",
+    "desc": "50+ 主流模型统一接口，兼容 OpenAI SDK，比官方直连更省",
+    "emoji": "🪼",
+    "logo": "assets/sponsors/salpx-logo.png",
+    "url": "https://www.salpx.com/",
+    "tier": "gold",
+    "order": 3,
+    "startAt": "2026-07-08",
+    "endAt": "2027-12-31"
+  }
+]

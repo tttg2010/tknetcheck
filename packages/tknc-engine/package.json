@@ -16,7 +16,9 @@
   "files": ["src"],
   "sideEffects": false,
   "scripts": {
-    "test": "node test/smoke.test.js"
+    "test": "node test/smoke.test.js",
+    "sync": "bash ../../scripts/sync-engine.sh",
+    "sync:check": "bash ../../scripts/sync-engine.sh --check"
   },
   "license": "UNLICENSED"
 }
