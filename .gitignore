@@ -10,3 +10,6 @@ node_modules/
 dist/
 .idea/
 .vscode/
+
+# Local Claude Code config
+.claude/

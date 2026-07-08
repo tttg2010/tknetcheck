@@ -1,0 +1,22 @@
+{
+  "name": "@tknc/engine",
+  "version": "0.1.0",
+  "description": "小白兔TKNC 判断引擎 —— 平台无关的纯函数评分/建议引擎，前端小工具与 TJ-Social 后端共用一套判断标准。",
+  "type": "module",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "exports": {
+    ".": {
+      "import": "./src/index.js"
+    },
+    "./thresholds": {
+      "import": "./src/thresholds.js"
+    }
+  },
+  "files": ["src"],
+  "sideEffects": false,
+  "scripts": {
+    "test": "node test/smoke.test.js"
+  },
+  "license": "UNLICENSED"
+}

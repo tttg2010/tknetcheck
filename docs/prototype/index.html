@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0c10">
+<title>小白兔TKNC · TikTok 网络环境体检仪</title>
+<meta name="description" content="30 秒查出你 TikTok 0 播放的网络真相。6 项诊断维度，仪表级报告，具体到 IP 质量、DNS、WebRTC 泄漏、线路稳定性。">
+<style>
+/* ============================================================
+   TK NetCheck — "Diagnostic Console"
+   设计主张：精密诊断仪器。暖近黑 + 单一青绿-蓝强调 + 等宽技术读数。
+   270° 速度表弧为主角。克制、权威、有测量感。
+   Author: Claude Fable 5
+   ============================================================ */
+
+/* ============================== TOKENS ============================== */
+:root{
+  /* canvas — 暖近黑，非冷蓝黑 */
+  --bg:        #0b0c10;
+  --bg-grain:  #0e0f14;
+  --surface:   #141620;
+  --surface-2: #191c28;
+  --surface-3: #20232f;
+  --inset:     #0d0e13;
+
+  /* hairlines */
+  --line:      rgba(255,255,255,.07);
+  --line-2:    rgba(255,255,255,.11);
+  --line-glow: rgba(120,224,200,.22);
+
+  /* ink */
+  --ink:   #f3f5f8;
+  --ink-2: #aab0bd;
+  --ink-3: #6f7686;
+  --ink-4: #4a5060;
+
+  /* single confident accent + tier scale */
+  --acc:   #34e3b0;        /* mint-emerald — brand energy */
+  --acc-2: #37b6ff;        /* cyan-blue — gradient partner */
+  --good:  #34e3b0;
+  --ok:    #4ca8ff;
+  --warn:  #f7b64b;
+  --bad:   #ff5d6c;
+
+  --acc-grad: linear-gradient(135deg,#34e3b0 0%,#37b6ff 100%);
+
+  /* type */
+  --sans: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --mono: "SF Mono","JetBrains Mono","Roboto Mono",ui-monospace,Menlo,Consolas,monospace;
+
+  /* geometry */
+  --r-sm: 10px;
+  --r:    14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --pad:  20px;
+  --maxw: 720px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--sans);
+  background:var(--bg);
+  color:var(--ink);
+  line-height:1.55;
+  letter-spacing:.01em;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+/* faint instrument grain + top glow behind hero */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(120% 60% at 50% -8%, rgba(52,227,176,.10), transparent 60%),
+    radial-gradient(90% 50% at 85% 0%, rgba(55,182,255,.07), transparent 55%);
+}
+.wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 18px}
+h1,h2,h3{letter-spacing:-.02em;line-height:1.12}
+.mono{font-family:var(--mono);font-feature-settings:"tnum" 1,"zero" 1}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+img{max-width:100%;display:block}
+
+/* ============================== NAV ============================== */
+.nav{
+  position:sticky;top:0;z-index:40;
+  backdrop-filter:saturate(160%) blur(14px);
+  background:rgba(11,12,16,.72);
+  border-bottom:1px solid var(--line);
+}
+.nav-in{max-width:var(--maxw);margin:0 auto;padding:12px 18px;display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15.5px}
+.brand .dot{
+  width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:15px;
+  background:var(--acc-grad);box-shadow:0 4px 14px rgba(52,227,176,.28);
+}
+.brand small{color:var(--ink-3);font-weight:500;font-size:11px;letter-spacing:.08em;margin-left:2px}
+.nav a.gh{display:flex;align-items:center;gap:6px;color:var(--ink-2);font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:999px}
+.nav a.gh:hover{color:var(--ink);border-color:var(--line-2)}
+
+/* ============================== SPONSOR BAR ============================== */
+.sponsors{padding:16px 0 6px}
+.sp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px}
+.sp-title{font-size:10.5px;letter-spacing:.18em;color:var(--ink-3);font-weight:600;display:flex;align-items:center;gap:7px}
+.sp-title::before{content:"";width:5px;height:5px;border-radius:2px;background:var(--acc);box-shadow:0 0 8px var(--acc)}
+.sp-cta{font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:5px}
+.sp-cta:hover{color:var(--acc)}
+.sp-scroller{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.sp-scroller::-webkit-scrollbar{display:none}
+.sp-card{
+  scroll-snap-align:start;flex:0 0 auto;width:212px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  padding:13px 14px;display:flex;flex-direction:column;gap:2px;transition:border-color .18s,transform .18s;
+}
+.sp-card:hover{border-color:var(--line-2);transform:translateY(-1px)}
+.sp-logo{width:34px;height:34px;border-radius:9px;background:var(--surface-3);display:grid;place-items:center;font-size:18px;margin-bottom:7px}
+.sp-name{font-weight:650;font-size:14px;display:flex;align-items:center;gap:6px}
+.sp-slogan{font-size:12px;color:var(--acc);font-weight:500}
+.sp-desc{font-size:11.5px;color:var(--ink-3);line-height:1.45;margin-top:2px}
+.sp-go{margin-top:9px;align-self:flex-start;font-size:11.5px;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:4px 11px}
+.sp-go:hover{color:var(--ink);border-color:var(--line-2)}
+.sp-empty{
+  flex:0 0 auto;width:150px;border:1px dashed var(--line-2);border-radius:var(--r);
+  display:grid;place-items:center;text-align:center;color:var(--ink-3);font-size:12px;gap:2px;cursor:pointer;
+}
+.sp-empty:hover{border-color:var(--acc);color:var(--acc)}
+.sp-empty .plus{font-size:22px;font-weight:300;line-height:1}
+
+/* ============================== CHECKER (hero, 3 states) ============================== */
+.console{
+  position:relative;margin:14px 0 8px;
+  background:linear-gradient(180deg,var(--surface) 0%,var(--bg-grain) 100%);
+  border:1px solid var(--line);border-radius:var(--r-xl);
+  padding:30px 22px 26px;overflow:hidden;
+}
+.console::before{ /* corner ticks — instrument bezel */
+  content:"";position:absolute;inset:10px;border-radius:22px;
+  background:
+    linear-gradient(var(--line-2),var(--line-2)) left 0 top 0/16px 1px no-repeat,
+    linear-gradient(var(--line-2),var(--line-2)) left 0 top 0/1px 16px no-repeat,
+    linear-gradient(var(--line-2),var(--line-2)) right 0 top 0/16px 1px no-repeat,
+    linear-gradient(var(--line-2),var(--line-2)) right 0 top 0/1px 16px no-repeat,
+    linear-gradient(var(--line-2),var(--line-2)) left 0 bottom 0/16px 1px no-repeat,
+    linear-gradient(var(--line-2),var(--line-2)) left 0 bottom 0/1px 16px no-repeat,
+    linear-gradient(var(--line-2),var(--line-2)) right 0 bottom 0/16px 1px no-repeat,
+    linear-gradient(var(--line-2),var(--line-2)) right 0 bottom 0/1px 16px no-repeat;
+  pointer-events:none;
+}
+.eyebrow{
+  text-align:center;font-size:11px;letter-spacing:.16em;color:var(--ink-3);font-weight:600;
+  text-transform:uppercase;margin-bottom:12px;
+}
+.eyebrow b{color:var(--acc)}
+.headline{text-align:center;font-size:26px;font-weight:800;line-height:1.22;margin-bottom:8px}
+.headline .hl{
+  background:var(--acc-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+.subline{text-align:center;color:var(--ink-2);font-size:14px;max-width:400px;margin:0 auto 4px}
+.subline b{color:var(--ink)}
+
+/* gauge */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;margin:14px 0 6px}
+.gauge{position:relative;width:230px;height:190px}
+.gauge svg{width:230px;height:230px;display:block;transform:translateY(2px)}
+.gauge .arc-bg{stroke:rgba(255,255,255,.06);fill:none;stroke-width:13;stroke-linecap:round}
+.gauge .arc-fg{fill:none;stroke-width:13;stroke-linecap:round;transition:stroke-dashoffset 1.1s cubic-bezier(.22,.61,.36,1),stroke .5s}
+.gauge .ticks line{stroke:rgba(255,255,255,.10);stroke-width:2}
+.gauge-face{
+  position:absolute;left:0;right:0;top:44px;display:flex;flex-direction:column;align-items:center;
+}
+.gauge-emoji{font-size:30px;line-height:1;filter:drop-shadow(0 3px 8px rgba(0,0,0,.4));transition:transform .3s}
+.gauge-num{font-family:var(--mono);font-size:56px;font-weight:700;line-height:.9;letter-spacing:-.03em;margin-top:6px;font-feature-settings:"tnum" 1}
+.gauge-num .u{font-size:20px;color:var(--ink-3);font-weight:500}
+.gauge-cap{font-size:11px;letter-spacing:.14em;color:var(--ink-3);text-transform:uppercase;margin-top:2px}
+.tier-pill{
+  margin-top:10px;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:650;
+  padding:5px 14px;border-radius:999px;border:1px solid var(--line-2);
+}
+.tier-pill .tdot{width:7px;height:7px;border-radius:99px}
+
+/* scan module list (state B) */
+.scanlist{margin:16px auto 0;max-width:420px;display:none}
+.scanlist.on{display:block}
+.scan-row{display:flex;align-items:center;gap:11px;padding:9px 2px;border-bottom:1px solid var(--line);font-size:13.5px}
+.scan-row:last-child{border-bottom:none}
+.scan-ic{width:24px;text-align:center;font-size:15px;flex-shrink:0}
+.scan-nm{flex:1;color:var(--ink-2)}
+.scan-row.done .scan-nm,.scan-row.run .scan-nm{color:var(--ink)}
+.scan-st{font-size:11.5px;font-family:var(--mono);color:var(--ink-3);display:flex;align-items:center;gap:6px}
+.scan-st .sp-ring{width:12px;height:12px;border:2px solid var(--line-2);border-top-color:var(--acc);border-radius:99px;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.scan-row.done .scan-st{color:var(--good)}
+
+/* CTA + meta */
+.cta-zone{margin-top:18px;display:flex;flex-direction:column;align-items:center;gap:11px}
+.btn-primary{
+  width:100%;max-width:340px;height:52px;border-radius:999px;font-size:16px;font-weight:700;color:#04120d;
+  background:var(--acc-grad);box-shadow:0 8px 26px rgba(52,227,176,.30);
+  display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .15s,box-shadow .15s,opacity .15s;
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 30px rgba(52,227,176,.38)}
+.btn-primary:active{transform:translateY(0)}
+.btn-primary:disabled{opacity:.55;cursor:default;transform:none;box-shadow:none}
+.btn-ghost{color:var(--ink-2);font-size:14px;padding:9px 18px;border:1px solid var(--line);border-radius:999px}
+.btn-ghost:hover{color:var(--ink);border-color:var(--line-2)}
+.stat-strip{display:flex;gap:18px;color:var(--ink-3);font-size:12px}
+.stat-strip b{color:var(--ink-2);font-family:var(--mono);font-weight:600}
+.tip{color:var(--ink-3);font-size:12px;text-align:center;max-width:320px}
+.tip b{color:var(--ink-2)}
+.consent{color:var(--ink-4);font-size:11px}
+.consent a{color:var(--ink-3);text-decoration:underline;text-underline-offset:2px}
+
+/* ============================== REPORT (state C) ============================== */
+.report{display:none;margin-top:20px}
+.report.on{display:block}
+.verdict{text-align:center;margin-bottom:16px}
+.verdict h3{font-size:19px;font-weight:750;margin-bottom:4px}
+.verdict p{color:var(--ink-2);font-size:13.5px}
+.verdict .meta{color:var(--ink-4);font-size:11.5px;font-family:var(--mono);margin-top:8px}
+
+.topissues{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 16px;margin-bottom:14px;
+}
+.topissues h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.ti-row{display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.ti-row:first-of-type{border-top:none}
+.ti-badge{flex-shrink:0;width:44px;height:20px;border-radius:6px;font-size:10.5px;font-weight:700;display:grid;place-items:center;letter-spacing:.03em}
+.ti-txt b{color:var(--ink)}
+.ti-txt span{color:var(--ink-3)}
+
+/* module cards */
+.modcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-bottom:9px;overflow:hidden;transition:border-color .18s}
+.modcard.open{border-color:var(--line-2)}
+.mod-head{display:flex;align-items:center;gap:12px;padding:14px 15px;cursor:pointer;user-select:none}
+.mod-ic{width:26px;text-align:center;font-size:17px;flex-shrink:0}
+.mod-main{flex:1;min-width:0}
+.mod-nm{font-weight:650;font-size:14.5px;display:flex;align-items:center;gap:8px}
+.mod-sum{font-size:12px;color:var(--ink-3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono)}
+.mod-score{font-family:var(--mono);font-weight:700;font-size:17px;flex-shrink:0}
+.mod-stdot{width:8px;height:8px;border-radius:99px;flex-shrink:0}
+.mod-chev{color:var(--ink-4);font-size:11px;transition:transform .22s;flex-shrink:0}
+.modcard.open .mod-chev{transform:rotate(180deg)}
+.rec-tag{font-size:10px;font-weight:600;color:var(--warn);border:1px solid rgba(247,182,75,.3);background:rgba(247,182,75,.08);border-radius:5px;padding:1px 6px}
+
+.mod-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.modcard.open .mod-body{max-height:1600px}
+.mod-inner{padding:2px 15px 15px;border-top:1px solid var(--line)}
+
+/* findings */
+.findings{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.finding{display:flex;gap:9px;font-size:13px;align-items:flex-start}
+.mk{width:16px;height:16px;border-radius:99px;flex-shrink:0;margin-top:2px;display:grid;place-items:center;font-size:9px;font-weight:800;color:#0b0c10}
+.finding .ftx{color:var(--ink-2)}
+.finding .ftx b{color:var(--ink)}
+
+/* detail kv grid */
+.kv{margin-top:13px;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12.5px;
+    background:var(--inset);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 13px}
+.kv dt{color:var(--ink-3)}
+.kv dd{font-family:var(--mono);color:var(--ink);text-align:right;word-break:break-all;font-size:12px}
+.kv dd.wrap-l{text-align:left}
+
+/* stability table */
+.tbl-scroll{margin-top:13px;overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-sm)}
+table.perf{width:100%;border-collapse:collapse;font-size:11.5px;min-width:440px}
+table.perf th,table.perf td{padding:8px 10px;text-align:right;white-space:nowrap;font-family:var(--mono)}
+table.perf th{color:var(--ink-3);font-weight:600;background:var(--inset);border-bottom:1px solid var(--line);letter-spacing:.02em;font-family:var(--sans)}
+table.perf td:first-child,table.perf th:first-child{text-align:left;color:var(--ink);position:sticky;left:0;background:var(--surface)}
+table.perf tr td{border-bottom:1px solid var(--line)}
+table.perf tr:last-child td{border-bottom:none}
+.cell-good{color:var(--good)}.cell-warn{color:var(--warn)}.cell-bad{color:var(--bad)}
+
+/* recs inside module */
+.recs{margin-top:13px;display:flex;flex-direction:column;gap:8px}
+.rec{border-left:3px solid var(--warn);background:var(--surface-2);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:9px 12px;font-size:12.5px}
+.rec.danger{border-color:var(--bad)}.rec.info{border-color:var(--ok)}
+.rec b{display:block;margin-bottom:2px;font-size:13px}
+.rec span{color:var(--ink-3);line-height:1.5}
+
+.report-actions{margin-top:16px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.share-out{width:100%;background:var(--inset);border:1px solid var(--line);border-radius:var(--r);padding:13px;font-size:12.5px;color:var(--ink-2);line-height:1.6;display:none}
+.share-out.on{display:block}
+
+/* ============================== SECTIONS ============================== */
+.section{padding:34px 0 6px}
+.sec-h{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--acc);font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.sec-h::before{content:"";width:18px;height:1px;background:var(--acc)}
+.sec-t{font-size:22px;font-weight:750;margin-bottom:18px;letter-spacing:-.02em}
+
+.grid6{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.sig{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:15px 14px;transition:border-color .18s,transform .18s}
+.sig:hover{border-color:var(--line-2);transform:translateY(-2px)}
+.sig .si{font-size:22px;margin-bottom:9px}
+.sig h4{font-size:14px;font-weight:650;margin-bottom:4px}
+.sig p{font-size:12px;color:var(--ink-3);line-height:1.5}
+.sig .w{font-size:10px;font-family:var(--mono);color:var(--ink-4);margin-top:8px;letter-spacing:.04em}
+
+/* principle */
+.principles{display:flex;flex-direction:column;gap:11px}
+.prin{display:flex;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.prin-n{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--surface-3);flex-shrink:0;line-height:1;
+        -webkit-text-stroke:1px var(--line-2)}
+.prin h4{font-size:15px;font-weight:650;margin-bottom:4px}
+.prin p{font-size:12.5px;color:var(--ink-3);line-height:1.55}
+.prin p b{color:var(--ink-2)}
+
+/* faq */
+.faq-item{border-bottom:1px solid var(--line)}
+.faq-q{width:100%;text-align:left;padding:15px 2px;font-size:14.5px;font-weight:550;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.faq-q .fc{color:var(--ink-4);transition:transform .22s;flex-shrink:0}
+.faq-item.open .fc{transform:rotate(45deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .28s ease;color:var(--ink-3);font-size:13px;line-height:1.65}
+.faq-item.open .faq-a{max-height:280px}
+.faq-a .inner{padding:0 2px 15px}
+
+/* ============================== FOOTER ============================== */
+.footer{margin-top:40px;border-top:1px solid var(--line);padding:26px 0 44px;text-align:center}
+.foot-priv{font-size:11.5px;color:var(--ink-4);line-height:1.7;max-width:520px;margin:0 auto 16px}
+.built{
+  display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2);
+  padding:7px 14px;border:1px solid var(--line);border-radius:999px;
+}
+.built .spark{width:16px;height:16px;border-radius:5px;background:var(--acc-grad);display:grid;place-items:center;font-size:10px}
+.built b{background:var(--acc-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:700}
+.foot-links{margin-top:14px;display:flex;gap:16px;justify-content:center;font-size:12px;color:var(--ink-3)}
+.foot-links a:hover{color:var(--ink)}
+
+/* ============================== MODAL (wechat) ============================== */
+.mask{position:fixed;inset:0;z-index:60;background:rgba(6,7,10,.66);backdrop-filter:blur(4px);
+      display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .22s}
+.mask.on{opacity:1;pointer-events:auto}
+.sheet{
+  width:100%;max-width:440px;background:var(--surface);border:1px solid var(--line-2);
+  border-radius:var(--r-xl) var(--r-xl) 0 0;padding:24px 22px calc(24px + env(safe-area-inset-bottom));
+  transform:translateY(20px);transition:transform .28s cubic-bezier(.22,.61,.36,1);
+}
+.mask.on .sheet{transform:translateY(0)}
+@media(min-width:520px){.mask{align-items:center}.sheet{border-radius:var(--r-xl);transform:scale(.96)}.mask.on .sheet{transform:scale(1)}}
+.sheet .grip{width:38px;height:4px;border-radius:99px;background:var(--surface-3);margin:0 auto 16px}
+.sheet h3{font-size:18px;font-weight:750;margin-bottom:8px}
+.sheet .lead{font-size:13px;color:var(--ink-2);line-height:1.6;margin-bottom:18px}
+.sheet .lead b{color:var(--acc)}
+.qr-box{background:#fff;border-radius:var(--r);padding:12px;width:200px;margin:0 auto 16px}
+.qr-box img{width:100%;border-radius:6px}
+.qr-cap{text-align:center;font-size:12px;color:var(--ink-3);margin-bottom:16px}
+.wx-row{display:flex;align-items:center;gap:10px;background:var(--inset);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:16px}
+.wx-row .wl{font-size:11px;color:var(--ink-3);letter-spacing:.04em}
+.wx-row .wid{font-family:var(--mono);font-size:17px;font-weight:700;color:#07c160}
+.wx-copy{margin-left:auto;font-size:12px;font-weight:600;color:var(--acc);border:1px solid var(--line-2);border-radius:999px;padding:6px 14px;transition:all .15s}
+.wx-copy:hover{background:var(--surface-3)}
+.wx-copy.done{color:var(--good);border-color:var(--good)}
+.sheet .close{width:100%;height:46px;border-radius:999px;background:var(--surface-3);color:var(--ink);font-weight:600;font-size:15px}
+.sheet .close:hover{background:var(--surface-2)}
+
+/* ============================== RESPONSIVE ============================== */
+@media(max-width:380px){
+  .headline{font-size:23px}
+  .gauge,.gauge svg{width:206px}
+  .gauge-num{font-size:50px}
+  .sp-card{width:190px}
+  .grid6{gap:8px}
+}
+@media(min-width:560px){
+  .grid6{grid-template-columns:repeat(3,1fr)}
+  .headline{font-size:30px}
+}
+</style>
+</head>
+<body>
+
+<!-- == NAV == -->
+<nav class="nav">
+  <div class="nav-in">
+    <div class="brand"><span class="dot">🐰</span>小白兔TKNC<small>NETCHECK</small></div>
+    <a class="gh" href="#" aria-label="GitHub">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- == SPONSORS == -->
+  <section class="sponsors">
+    <div class="sp-head">
+      <span class="sp-title">赞助商 · SPONSORED</span>
+      <button class="sp-cta" id="spCta">想出现在这里？ →</button>
+    </div>
+    <div class="sp-scroller" id="spList"></div>
+  </section>
+
+  <!-- == CHECKER CONSOLE == -->
+  <section class="console">
+    <div class="eyebrow">TIKTOK 网络环境 · <b>诊断仪</b></div>
+    <h1 class="headline">30 秒查出你 TikTok<br><span class="hl">0 播放的网络真相</span></h1>
+    <p class="subline">内容一样，别人爆你 0 播放？问题可能不在内容，在<b>网络环境</b>。</p>
+
+    <div class="gauge-wrap">
+      <div class="gauge">
+        <svg viewBox="0 0 230 230">
+          <circle class="arc-bg" cx="115" cy="115" r="98"
+                  stroke-dasharray="461.8 615.7" transform="rotate(135 115 115)"/>
+          <circle class="arc-fg" id="arcFg" cx="115" cy="115" r="98" stroke="url(#gg)"
+                  stroke-dasharray="461.8 615.7" stroke-dashoffset="461.8" transform="rotate(135 115 115)"/>
+          <defs>
+            <linearGradient id="gg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#34e3b0"/><stop offset="1" stop-color="#37b6ff"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="gauge-face">
+          <div class="gauge-emoji" id="gEmoji">🐰</div>
+          <div class="gauge-num" id="gNum">--</div>
+          <div class="gauge-cap">综合评分</div>
+        </div>
+      </div>
+      <div class="tier-pill" id="tierPill" style="display:none">
+        <span class="tdot"></span><span id="tierTxt"></span>
+      </div>
+    </div>
+
+    <!-- scan list (state B) -->
+    <ol class="scanlist" id="scanList">
+      <li class="scan-row" data-m="ip"><span class="scan-ic">🌐</span><span class="scan-nm">IP 身份</span><span class="scan-st">等待</span></li>
+      <li class="scan-row" data-m="dns"><span class="scan-ic">🧭</span><span class="scan-nm">DNS 检测</span><span class="scan-st">等待</span></li>
+      <li class="scan-row" data-m="webrtc"><span class="scan-ic">🛰️</span><span class="scan-nm">WebRTC / IPv6 泄漏</span><span class="scan-st">等待</span></li>
+      <li class="scan-row" data-m="stability"><span class="scan-ic">📈</span><span class="scan-nm">网络稳定性</span><span class="scan-st">等待</span></li>
+      <li class="scan-row" data-m="device"><span class="scan-ic">📱</span><span class="scan-nm">设备一致性</span><span class="scan-st">等待</span></li>
+      <li class="scan-row" data-m="reachability"><span class="scan-ic">🎯</span><span class="scan-nm">TikTok 可达性</span><span class="scan-st">等待</span></li>
+    </ol>
+
+    <!-- CTA zone (state A) -->
+    <div class="cta-zone" id="ctaZone">
+      <button class="btn-primary" id="btnStart">开始检测 · 30 秒出报告</button>
+      <div class="stat-strip"><span><b>6</b> 项诊断</span><span><b>~30</b> 秒</span><span><b>0–100</b> 分</span></div>
+      <p class="tip">请用<b>需要检测的那台手机</b>、连<b>需要检测的那个网络</b>打开</p>
+      <p class="consent">点击开始即表示同意 <a href="#">隐私声明</a></p>
+    </div>
+
+    <!-- REPORT (state C) -->
+    <div class="report" id="report">
+      <div class="verdict">
+        <h3 id="verdictH">--</h3>
+        <p id="verdictP">--</p>
+        <div class="meta" id="verdictMeta"></div>
+      </div>
+      <div class="topissues" id="topIssues"></div>
+      <div id="modList"></div>
+      <div class="report-actions">
+        <button class="btn-primary" id="btnShare" style="max-width:340px">生成分享文案</button>
+        <div class="share-out" id="shareOut"></div>
+        <button class="btn-ghost" id="btnRerun">重新检测</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- == WHAT SIGNALS == -->
+  <section class="section">
+    <div class="sec-h">检测哪些信号</div>
+    <h2 class="sec-t">6 项维度，覆盖 TikTok 判定环境的每个破绽</h2>
+    <div class="grid6" id="sigGrid"></div>
+  </section>
+
+  <!-- == PRINCIPLE == -->
+  <section class="section">
+    <div class="sec-h">检测原理</div>
+    <h2 class="sec-t">TikTok 靠"信号不一致"识别可疑环境</h2>
+    <p style="color:var(--ink-2);font-size:13.5px;margin-bottom:16px;line-height:1.6">
+      代理能换掉你的 IP，却换不掉手机的时区、语言、指纹和线路质量。我们把 TikTok 会查的信号自己先查一遍，用规则打分——分三类：
+    </p>
+    <div class="principles">
+      <div class="prin"><div class="prin-n">01</div><div><h4>身份类 · 你这个 IP 干不干净</h4><p>是机房 IP 还是住宅 IP、ASN 归属、是否被风险库标记为代理、<b>风险评分</b>多高。机房 IP 是养号大忌。</p></div></div>
+      <div class="prin"><div class="prin-n">02</div><div><h4>一致性类 · 各处身份对不对得上</h4><p>时区 vs IP 国家、语言 vs IP 国家、WebRTC 暴露的公网 IP vs 代理 IP、UA vs 屏幕。<b>"IP 在美国、时区在上海"就是一眼被识破的破绽</b>。</p></div></div>
+      <div class="prin"><div class="prin-n">03</div><div><h4>质量类 · 线路能不能扛住发视频</h4><p>30 秒持续采样 TikTok 域名的<b>延迟、抖动、丢包、TLS 握手</b>。丢包超 2% 就会上传失败、直播掉线。</p></div></div>
+    </div>
+  </section>
+
+  <!-- == FAQ == -->
+  <section class="section">
+    <div class="sec-h">常见问题</div>
+    <h2 class="sec-t">FAQ</h2>
+    <div id="faqList"></div>
+  </section>
+
+</div>
+
+<!-- == FOOTER == -->
+<footer class="footer">
+  <div class="wrap">
+    <p class="foot-priv">
+      隐私声明：本工具<b style="color:var(--ink-2)">不存储你的原始公网 IP</b>、不存 WebRTC 泄漏的真实 IP、不存 Canvas 指纹原图（仅 SHA-256 哈希）。匿名派生指标最多保留 7 天用于分享，之后自动删除，不向第三方出售任何数据。
+    </p>
+    <div class="built"><span class="spark">✦</span>此网站使用 <b>Claude Fable 5</b> 开发</div>
+    <div class="foot-links">
+      <a href="#">MIT License</a><a href="#">GitHub 开源</a><a href="#" id="footWx">联系管理员</a>
+    </div>
+  </div>
+</footer>
+
+<!-- == WECHAT SHEET == -->
+<div class="mask" id="wxMask">
+  <div class="sheet">
+    <div class="grip"></div>
+    <h3>让你的品牌出现在这里</h3>
+    <p class="lead">每天有大量 TikTok 从业者在这检测网络环境——<b>正是你的精准客户</b>。加管理员微信，备注"赞助"，当天可上线。</p>
+    <div class="qr-box"><img src="assets/wechat-qr.jpg" alt="管理员微信二维码"></div>
+    <p class="qr-cap">扫码添加 · 拿铁伴夏（湖南 长沙）</p>
+    <div class="wx-row">
+      <div><div class="wl">管理员微信号</div><div class="wid" id="wxId">zac201299</div></div>
+      <button class="wx-copy" id="wxCopy">复制</button>
+    </div>
+    <button class="close" id="wxClose">关闭</button>
+  </div>
+</div>
+
+<script>
+/* ============================== SPONSORS (管理员手动维护) ============================== */
+/* 字段：id/name/slogan/desc/emoji/url/tier/order/startAt/endAt。到期(endAt)或未开始(startAt)自动隐藏。*/
+const SPONSORS = [
+  { id:"resi01", name:"某某住宅IP", slogan:"真实家宽住宅 IP", desc:"为 TK 矩阵提供干净出口，降低机房 IP 封号风险", emoji:"🏠", url:"#", tier:"gold",   order:1, startAt:"2026-06-01", endAt:"2026-12-31" },
+  { id:"fp01",   name:"某某指纹浏览器", slogan:"多开账号的安全环境", desc:"隔离指纹与 Cookie，TK 矩阵运营首选",     emoji:"🖥️", url:"#", tier:"silver", order:2, startAt:"2026-06-01", endAt:"2026-12-31" },
+  { id:"erp01",  name:"某某跨境ERP", slogan:"矩阵账号统一管理", desc:"批量发布 + 数据看板，团队协作更省心",       emoji:"📦", url:"#", tier:"silver", order:3, startAt:"2026-06-01", endAt:"2026-12-31" },
+  { id:"old99",  name:"过期赞助（演示隐藏）", slogan:"已到期", desc:"endAt 已过，前端自动过滤不渲染", emoji:"⏳", url:"#", tier:"silver", order:9, startAt:"2026-01-01", endAt:"2026-06-30" }
+];
+const TODAY = "2026-07-08";
+const TIER_RANK = { gold:0, silver:1, bronze:2 };
+function activeSponsors(){
+  return SPONSORS
+    .filter(s => s.startAt <= TODAY && s.endAt >= TODAY)
+    .sort((a,b)=> (TIER_RANK[a.tier]-TIER_RANK[b.tier]) || (a.order-b.order));
+}
+function renderSponsors(){
+  const box = document.getElementById('spList');
+  box.innerHTML = activeSponsors().map(s=>`
+    <div class="sp-card">
+      <div class="sp-logo">${s.emoji}</div>
+      <div class="sp-name">${s.name}</div>
+      <div class="sp-slogan">${s.slogan}</div>
+      <div class="sp-desc">${s.desc}</div>
+      <a class="sp-go" href="${s.url}">前往 →</a>
+    </div>`).join('') +
+    `<div class="sp-empty" id="spEmpty"><span class="plus">＋</span><span>你的品牌</span></div>`;
+  document.getElementById('spEmpty').onclick = openWx;
+}
+
+/* ============================== SIGNALS + FAQ content ============================== */
+const SIGNALS = [
+  { i:"🌐", t:"IP 身份",        d:"机房 IP 还是住宅 IP，ASN 与风险评分", w:"权重 25" },
+  { i:"🧭", t:"DNS 检测",       d:"DoH 双源对比 + 时区交叉校验",        w:"权重 15" },
+  { i:"🛰️", t:"WebRTC 泄漏",    d:"代理有没有暴露你的真实 IP",          w:"权重 15" },
+  { i:"📈", t:"网络稳定性",     d:"30 秒采样：延迟 / 抖动 / 丢包",       w:"权重 25" },
+  { i:"📱", t:"设备一致性",     d:"时区 / 语言 / 指纹与 IP 对不对得上",  w:"权重 10" },
+  { i:"🎯", t:"TikTok 可达性",  d:"直接探测官方域名通不通",             w:"权重 10" }
+];
+document.getElementById('sigGrid').innerHTML = SIGNALS.map(s=>`
+  <div class="sig"><div class="si">${s.i}</div><h4>${s.t}</h4><p>${s.d}</p><div class="w">${s.w}</div></div>`).join('');
+
+const FAQ = [
+  { q:"0 播放真的和网络有关系吗？", a:"有。TikTok 在推流前会评估你的网络环境是否「可信」。机房 IP、DNS 与时区不匹配、WebRTC 泄漏真实 IP 等信号，会让算法判定为「高风险环境」，从而限制初始推荐量——表现就是内容不错却 0 播放。" },
+  { q:"检测安全吗？会不会暴露账号？", a:"安全。检测全程在你的浏览器本地发起网络请求，不需要登录 TikTok、不碰你的账号密码。我们不存储你的原始公网 IP、真实内网 IP 和 Canvas 指纹原图，只保留匿名派生指标最多 7 天。" },
+  { q:"分数多少算合格？", a:"90+ 优秀，可放心养号发布；70–89 良好，优化少数项即可；50–69 警告，存在风险，不建议发新视频；50 以下危险，建议立即排查环境再操作。" },
+  { q:"多久检测一次比较好？", a:"每次换 IP、换网络、换代理线路后都建议测一次;稳定使用时一周一次即可。检测要用真正发视频的那台手机、那个网络。" },
+  { q:"机房 IP 和住宅 IP 有什么区别？", a:"机房 / IDC IP 来自数据中心（AWS、Vultr 等），一个 IP 段被大量用户共用，TikTok 极易识别为代理，是养号大忌;住宅 IP 来自真实家庭宽带（如 Comcast），干净、风险低，是养号首选。" }
+];
+document.getElementById('faqList').innerHTML = FAQ.map(f=>`
+  <div class="faq-item">
+    <button class="faq-q">${f.q}<span class="fc">＋</span></button>
+    <div class="faq-a"><div class="inner">${f.a}</div></div>
+  </div>`).join('');
+document.querySelectorAll('.faq-q').forEach(b=>{
+  b.onclick=()=>b.parentElement.classList.toggle('open');
+});
+
+/* ============================== FAKE REPORT DATA (对齐引擎 evaluate 输出 + 模块 result) ============================== */
+const REPORT = {
+  meta: "检测于 2026-07-08 21:14 · 6 项全测 · MVP v0.9",
+  scores: { overall:88, ip:90, dns:85, webrtc:100, stability:82, device:90, reachability:90 },
+  results: {
+    ip:{ ok:true, ip:"24.60.183.47", country:"US", countryName:"United States", city:"Boston", region:"Massachusetts",
+         asn:"AS7922", org:"AS7922 Comcast Cable Communications", isHosting:false, isProxy:false, isMobile:false,
+         isResidential:true, riskScore:12 },
+    dns:{ ok:true, target:"www.tiktok.com", baselineTarget:"example.com",
+          tiktokGoogleIps:["23.211.145.36","23.211.145.51"], tiktokCloudflareIps:["23.62.126.19","23.62.126.42"],
+          googleReachable:true, cloudflareReachable:true, bothDohReachable:true,
+          baselineGoogleIps:["93.184.216.34"], baselineCloudflareIps:["93.184.216.34"], baselineConsistent:true,
+          timezone:"America/New_York", ipCountry:"US", ipCountryName:"United States", ipCountryKnown:true,
+          tzCountryMatch:true, degraded:true },
+    webrtc:{ ok:true, referenced:true, referenceIp:"24.60.183.47", srflxIps:["24.60.183.47"],
+             hostCandidates:["a1b2c3d4-e5f6-7890-abcd-ef1234567890.local"], realLocalIps:[],
+             hasWebRtcLeak:false, ipv6Detected:false, ipv6Address:"", hasIpv6Leak:false },
+    stability:{ ok:true, coarse:false, overall:{ latency:214, jitter:38, tls:128, loss:0.8 },
+      perTarget:[
+        { host:"www.tiktok.com", latency:168, jitter:22, tls:96, dns:14, tcp:41, loss:0.0, expected:30, received:30, protocols:["h2"] },
+        { host:"api16-normal-useast5.tiktokv.com", latency:243, jitter:51, tls:152, dns:19, tcp:58, loss:3.3, expected:30, received:29, protocols:["h2"] },
+        { host:"v16-webapp.tiktok.com", latency:201, jitter:34, tls:118, dns:12, tcp:47, loss:0.0, expected:30, received:30, protocols:["h2"] },
+        { host:"p16-sign-va.tiktokcdn.com", latency:189, jitter:29, tls:104, dns:11, tcp:44, loss:0.0, expected:30, received:30, protocols:["h2","h3"] },
+        { host:"mon.tiktokv.com", latency:269, jitter:54, tls:170, dns:21, tcp:63, loss:0.0, expected:30, received:30, protocols:["h2"] }
+      ] },
+    device:{ ok:true, timezone:"America/New_York", language:"en-us", languages:["en-us","en"],
+      ua:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+      platform:"iPhone", cores:6, memory:4, connType:"4g",
+      screen:{ w:390, h:844, colorDepth:24, devicePixelRatio:3 },
+      canvasHash:"8f3a2c9d5e1b7a04f6c8d2e9b0a1c3f5d7e8b2a4c6f9d1e3b5a7c9f0d2e4b6a8c",
+      webglRenderer:"Apple GPU (Apple, Metal, Apple A17 Pro)", ipCountry:"US",
+      tzCountryMatch:true, langCountryMatch:true, uaScreenMatch:true },
+    reachability:{ ok:true, totalProbes:3, successes:3, totalRetries:1, allOk:true,
+      probes:[
+        { kind:"site", host:"www.tiktok.com", ok:true, attempts:1, firstAttemptMs:342, lastError:"" },
+        { kind:"api",  host:"api16-normal-useast5.tiktokv.com", ok:true, attempts:2, firstAttemptMs:1180, lastError:"" },
+        { kind:"cdn",  host:"p16-sign-va.tiktokcdn.com", ok:true, attempts:1, firstAttemptMs:288, lastError:"" }
+      ] }
+  },
+  recommendations: [
+    { severity:"warn", title:"部分域名需要重试（1 次）", body:"连接 TikTok 域名时偶发失败。说明代理稳定性不足，可能影响视频上传与发布。" },
+    { severity:"warn", title:"抖动偏高（54ms）", body:"延迟波动过大会导致视频播放断断续续。建议检查软路由 / 分流策略，避免与下载等大流量任务共用线路。" },
+    { severity:"info", title:"完整 DNS 检测需付费版", body:"MVP 版仅做 DoH 可达性 + 非 CDN 基准对比 + 时区交叉校验。完整的 DNS 泄漏检测需要自建权威 DNS 服务器。" }
+  ]
+};
+
+/* ============================== TIER helpers ============================== */
+const TIERS = {
+  excellent:{ txt:"优秀 · 可放心养号发布", color:"var(--good)", emoji:"😎", verdict:["网络环境优秀，起飞没问题 🚀","各项指标全部通过"] },
+  good:     { txt:"良好 · 建议优化少数项", color:"var(--ok)",   emoji:"🙂", verdict:["整体不错，优化几项就能起飞 ✨","大部分检测通过，关注标黄项"] },
+  warning:  { txt:"警告 · 存在风险，不建议发布", color:"var(--warn)", emoji:"😟", verdict:["存在风险，建议先处理再发视频","多项指标需要改善"] },
+  danger:   { txt:"危险 · 严重问题，立即停止", color:"var(--bad)",  emoji:"😰", verdict:["严重问题，请立即排查网络环境","多项检测未通过"] }
+};
+function tierOf(s){ return s>=90?"excellent":s>=70?"good":s>=50?"warning":"danger"; }
+function sevColor(s){ return s==="danger"?"var(--bad)":s==="warn"?"var(--warn)":s==="ok"?"var(--good)":"var(--ok)"; }
+function scoreColor(s){ const t=tierOf(s); return TIERS[t].color; }
+function mk(sev){ const c=sevColor(sev); const ch=sev==="danger"?"✕":sev==="warn"?"!":sev==="info"?"i":"✓";
+  return `<span class="mk" style="background:${c}">${ch}</span>`; }
+function dot(sev){ return `<span class="mod-stdot" style="background:${sevColor(sev)}"></span>`; }
+
+/* worst severity among a module's findings → status dot */
+function worst(sevs){ if(sevs.includes("danger"))return"danger"; if(sevs.includes("warn"))return"warn"; return"ok"; }
+
+/* ============================== BUILD one module's report block ============================== */
+function ipType(r){ return r.isHosting?"机房 / IDC":r.isProxy?"代理":r.isMobile?"移动网络":r.isResidential?"住宅宽带":"未知"; }
+
+function buildModules(rep){
+  const R=rep.results, S=rep.scores, recsByMod=groupRecs(rep.recommendations);
+  const M=[];
+
+  // IP
+  (()=>{ const r=R.ip; const f=[
+    ["info",`地理位置 <b>${r.countryName} · ${r.city}</b>`],
+    ["info",`运营商 <b>${r.org}</b>`],
+    [r.isHosting?"danger":"ok", r.isHosting?"检测到机房 / IDC IP":"非机房 IP，来源为真实住宅宽带"],
+    [r.isProxy?"warn":"ok", r.isProxy?"在风险库中被标记为代理":"未被标记为代理"],
+    [r.riskScore>=75?"danger":r.riskScore>=25?"warn":"ok", `风险评分 ${r.riskScore}/100（越低越好）`]
+  ];
+  M.push({ key:"ip", ic:"🌐", nm:"IP 身份", score:S.ip, sum:`${r.city} · ${ipType(r)} · 风险 ${r.riskScore}`,
+    findings:f, kv:[["IP 类型",ipType(r)],["公网 IP",r.ip],["国家 / 地区",`${r.country} · ${r.region}`],["ASN",r.asn],["住宅 IP",r.isResidential?"是":"否"]] });
+  })();
+
+  // DNS
+  (()=>{ const r=R.dns; const cdnN=new Set([...r.tiktokGoogleIps,...r.tiktokCloudflareIps]).size; const f=[
+    [r.bothDohReachable?"ok":"warn", r.bothDohReachable?"DoH 双源可达（Google + Cloudflare）":"仅单家 DoH 可达"],
+    ...(r.baselineConsistent!=null?[[r.baselineConsistent?"ok":"danger", r.baselineConsistent?`${r.baselineTarget} 双源解析一致（非 CDN 基准）`:`${r.baselineTarget} 双源解析不一致 — 疑似 DNS 劫持`]]:[]),
+    [r.tzCountryMatch?"ok":"danger", r.tzCountryMatch?"时区与 IP 国家一致":"时区与 IP 国家不一致"],
+    ["info",`${r.target} 解析到 ${cdnN} 个 CDN 节点（多节点为正常）`],
+    ["info","完整 DNS 泄漏检测需付费版"]
+  ];
+  M.push({ key:"dns", ic:"🧭", nm:"DNS 检测", score:S.dns, sum:`双源一致 · 时区匹配 · ${cdnN} CDN 节点`,
+    findings:f, kv:[
+      ["Google→tiktok",r.tiktokGoogleIps.join(", ")],
+      ["CF→tiktok",r.tiktokCloudflareIps.join(", ")],
+      ["Google→example",r.baselineGoogleIps.join(", ")],
+      ["CF→example",r.baselineCloudflareIps.join(", ")],
+      ["浏览器时区",r.timezone]
+    ] });
+  })();
+
+  // WebRTC
+  (()=>{ const r=R.webrtc; const f=[
+    [r.hasWebRtcLeak?"danger":"ok", r.referenced?(r.hasWebRtcLeak?"WebRTC 泄漏真实公网 IP":"无 WebRTC 公网 IP 泄漏，与代理 IP 一致"):`WebRTC 采集到 ${r.srflxIps.length} 个公网候选（缺少 IP 基准）`],
+    [r.ipv6Detected?"warn":"ok", r.ipv6Detected?"检测到 IPv6 直连":"未检测到 IPv6 直连"],
+    [r.realLocalIps.length?"info":"ok", r.realLocalIps.length?`暴露内网 IP：${r.realLocalIps.length} 个`:"内网 IP 已被浏览器匿名化（mDNS）"]
+  ];
+  M.push({ key:"webrtc", ic:"🛰️", nm:"WebRTC / IPv6 泄漏", score:S.webrtc, sum:"无泄漏 · 无 IPv6 直连 · 内网已匿名",
+    findings:f, kv:[
+      ["srflx 候选",r.srflxIps.join(", ")||"（无）"],
+      ["对比基准 IP",r.referenceIp],
+      ["IPv6 地址",r.ipv6Address||"（无）"],
+      ["host 候选",r.hostCandidates.join(", ")]
+    ] });
+  })();
+
+  // Stability
+  (()=>{ const r=R.stability, o=r.overall; const f=[
+    [o.latency<=300?"ok":o.latency<=500?"warn":"danger", `平均延迟 ${o.latency}ms`],
+    [o.jitter<=50?"ok":o.jitter<=100?"warn":"danger", `抖动 ${o.jitter}ms`],
+    [o.loss<=1?"ok":o.loss<=3?"warn":"danger", `丢包率 ${o.loss}%`],
+    [o.tls==null?"info":o.tls<=400?"ok":o.tls<=700?"warn":"danger", o.tls==null?"TLS 握手：未测量":`TLS 握手 ${o.tls}ms`]
+  ];
+  const cell=(v,g,w)=>`<td class="${v<=g?'cell-good':v<=w?'cell-warn':'cell-bad'}">${v}</td>`;
+  const tbl=`<div class="tbl-scroll"><table class="perf"><thead><tr>
+    <th>域名</th><th>延迟</th><th>抖动</th><th>TLS</th><th>丢包%</th><th>协议</th></tr></thead><tbody>${
+    r.perTarget.map(p=>`<tr><td>${p.host}</td>${cell(p.latency,300,500)}${cell(p.jitter,50,100)}<td>${p.tls??'−'}</td>${cell(p.loss,1,3)}<td>${p.protocols.join('/')}</td></tr>`).join('')
+    }</tbody></table></div>`;
+  M.push({ key:"stability", ic:"📈", nm:"网络稳定性", score:S.stability, sum:`延迟 ${o.latency}ms · 抖动 ${o.jitter}ms · 丢包 ${o.loss}%`,
+    findings:f, table:tbl });
+  })();
+
+  // Device
+  (()=>{ const r=R.device, sc=r.screen; const f=[
+    [r.tzCountryMatch?"ok":"danger", `时区与 IP 国家一致：${r.timezone}`],
+    [r.langCountryMatch?"ok":"warn", `语言与 IP 国家一致：${r.language}`],
+    [r.uaScreenMatch?"ok":"warn", `UA 与屏幕匹配：${sc.w}×${sc.h}`],
+    ["info",`GPU：${r.webglRenderer}`]
+  ];
+  M.push({ key:"device", ic:"📱", nm:"设备一致性", score:S.device, sum:`时区/语言/UA 全部匹配 · ${r.platform}`,
+    findings:f, kv:[
+      ["User-Agent",r.ua],["平台",r.platform],["语言",r.languages.join(", ")],
+      ["CPU / 内存",`${r.cores} 核 / ${r.memory}GB`],["网络类型",r.connType],
+      ["屏幕",`${sc.w}×${sc.h} @${sc.devicePixelRatio}x · ${sc.colorDepth}bit`],
+      ["Canvas 指纹",r.canvasHash.slice(0,32)+"…"],["WebGL",r.webglRenderer]
+    ] });
+  })();
+
+  // Reachability
+  (()=>{ const r=R.reachability; const f=r.probes.map(p=>[
+    p.ok?"ok":"danger", `${p.host}：${p.ok?`成功（${p.attempts===1?"一次过":p.attempts+" 次"}）`:`失败（${p.attempts} 次后放弃）`}`
+  ]);
+  M.push({ key:"reachability", ic:"🎯", nm:"TikTok 可达性", score:S.reachability, sum:`${r.successes}/${r.totalProbes} 探针通 · 重试 ${r.totalRetries} 次`,
+    findings:f, kv:r.probes.map(p=>[p.kind.toUpperCase()+" 首次耗时",`${p.firstAttemptMs}ms`]).concat([["总重试次数",String(r.totalRetries)]]) });
+  })();
+
+  return M.map(m=>({ ...m, recs:recsByMod[m.key]||[] }));
+}
+
+/* map recs to modules by keyword (演示：真实版由引擎按模块归类) */
+function groupRecs(recs){
+  const g={};
+  const put=(k,r)=>{(g[k]=g[k]||[]).push(r)};
+  recs.forEach(r=>{
+    const t=r.title;
+    if(/DNS/.test(t)) put("dns",r);
+    else if(/抖动|延迟|丢包|TLS|稳定/.test(t)) put("stability",r);
+    else if(/域名|重试|可达/.test(t)) put("reachability",r);
+    else if(/IP|机房|代理|风险/.test(t)) put("ip",r);
+    else if(/WebRTC|IPv6|泄漏/.test(t)) put("webrtc",r);
+    else if(/时区|语言|UA|设备/.test(t)) put("device",r);
+    else put("ip",r);
+  });
+  return g;
+}
+
+/* ============================== RENDER REPORT ============================== */
+function renderReport(rep){
+  const t=tierOf(rep.scores.overall), T=TIERS[t];
+  document.getElementById('verdictH').textContent=T.verdict[0];
+  document.getElementById('verdictP').textContent=T.verdict[1];
+  document.getElementById('verdictMeta').textContent=rep.meta;
+
+  // top issues
+  const order={danger:0,warn:1,info:2};
+  const top=[...rep.recommendations].sort((a,b)=>order[a.severity]-order[b.severity]).slice(0,3);
+  document.getElementById('topIssues').innerHTML=
+    `<h4>${mk('warn')} 关键提醒 · TOP ${top.length}</h4>`+
+    top.map(r=>{ const c=sevColor(r.severity==='info'?'info':r.severity);
+      const lbl=r.severity==='danger'?'严重':r.severity==='warn'?'注意':'说明';
+      return `<div class="ti-row">
+        <span class="ti-badge" style="color:${c};background:${c}1f">${lbl}</span>
+        <span class="ti-txt"><b>${r.title}</b> · <span>${r.body}</span></span></div>`; }).join('');
+
+  // modules
+  const mods=buildModules(rep);
+  document.getElementById('modList').innerHTML=mods.map((m,i)=>{
+    const st=worst(m.findings.map(f=>f[0]));
+    const recTag=m.recs.length?`<span class="rec-tag">${m.recs.length} 条建议</span>`:'';
+    const findings=m.findings.map(f=>`<div class="finding">${mk(f[0])}<span class="ftx">${f[1]}</span></div>`).join('');
+    const kv=m.kv?`<dl class="kv">${m.kv.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`:'';
+    const tbl=m.table||'';
+    const recs=m.recs.length?`<div class="recs">${m.recs.map(r=>`<div class="rec ${r.severity}"><b>${r.title}</b><span>${r.body}</span></div>`).join('')}</div>`:'';
+    return `<div class="modcard ${i===0?'open':''}" data-mi="${i}">
+      <div class="mod-head">
+        <span class="mod-ic">${m.ic}</span>
+        <div class="mod-main"><div class="mod-nm">${m.nm} ${recTag}</div><div class="mod-sum">${m.sum}</div></div>
+        <span class="mod-score" style="color:${scoreColor(m.score)}">${m.score}</span>
+        ${dot(st)}
+        <span class="mod-chev">▼</span>
+      </div>
+      <div class="mod-body"><div class="mod-inner">
+        <div class="findings">${findings}</div>${kv}${tbl}${recs}
+      </div></div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.mod-head').forEach(h=>{
+    h.onclick=()=>h.parentElement.classList.toggle('open');
+  });
+}
+
+/* ============================== STATE MACHINE ============================== */
+const arc=document.getElementById('arcFg'), gNum=document.getElementById('gNum'), gEmoji=document.getElementById('gEmoji');
+const ARC_LEN=461.8;
+function setGauge(score){
+  arc.style.strokeDashoffset = ARC_LEN*(1 - score/100);
+  arc.style.stroke = score>=90?'var(--good)':score>=70?'var(--ok)':score>=50?'var(--warn)':'var(--bad)';
+  gEmoji.textContent = score>=90?'😎':score>=70?'🙂':score>=50?'😟':'😰';
+}
+function emojiFor(s){ return s>=90?'😎':s>=70?'🙂':s>=50?'😟':'😰'; }
+
+let running=false;
+function startScan(){
+  if(running) return; running=true;
+  document.getElementById('ctaZone').style.display='none';
+  document.getElementById('report').classList.remove('on');
+  document.getElementById('scanList').classList.add('on');
+  document.getElementById('tierPill').style.display='none';
+  const rows=[...document.querySelectorAll('.scan-row')];
+  rows.forEach(r=>{ r.className='scan-row'; r.querySelector('.scan-st').textContent='等待'; });
+
+  // per-module target subscore for progressive gauge feel
+  const seq=[["ip",90],["dns",85],["webrtc",100],["stability",82],["device",90],["reachability",90]];
+  let idx=0, shown=0;
+  const step=()=>{
+    if(idx>0){ const p=rows[idx-1]; p.classList.remove('run'); p.classList.add('done'); p.querySelector('.scan-st').textContent='完成'; }
+    if(idx>=seq.length){ finishScan(); return; }
+    const row=rows[idx]; row.classList.add('run');
+    row.querySelector('.scan-st').innerHTML='<span class="sp-ring"></span>检测中';
+    // animate gauge toward running average
+    const avg=Math.round(seq.slice(0,idx+1).reduce((a,b)=>a+b[1],0)/(idx+1));
+    animateNum(shown, avg, 700); shown=avg; setGauge(avg);
+    idx++;
+    setTimeout(step, 900);
+  };
+  step();
+}
+function animateNum(from,to,ms){
+  const t0=performance.now();
+  const tick=(t)=>{ const k=Math.min(1,(t-t0)/ms); const v=Math.round(from+(to-from)*(1-Math.pow(1-k,3)));
+    gNum.textContent=v; if(k<1) requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+}
+function finishScan(){
+  const s=REPORT.scores.overall, t=tierOf(s), T=TIERS[t];
+  animateNum(parseInt(gNum.textContent)||0, s, 800); setGauge(s);
+  gNum.innerHTML = s; // ensure exact
+  const pill=document.getElementById('tierPill');
+  pill.style.display='inline-flex'; pill.style.color=T.color; pill.style.borderColor=T.color+'55';
+  pill.querySelector('.tdot').style.background=T.color;
+  document.getElementById('tierTxt').textContent=T.txt;
+  document.getElementById('scanList').classList.remove('on');
+  renderReport(REPORT);
+  document.getElementById('report').classList.add('on');
+  running=false;
+}
+function resetChecker(){
+  document.getElementById('report').classList.remove('on');
+  document.getElementById('scanList').classList.remove('on');
+  document.getElementById('ctaZone').style.display='flex';
+  document.getElementById('tierPill').style.display='none';
+  document.getElementById('shareOut').classList.remove('on');
+  document.getElementById('btnShare').textContent='生成分享文案';
+  gNum.textContent='--'; gEmoji.textContent='🐰';
+  arc.style.strokeDashoffset=ARC_LEN;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ============================== SHARE ============================== */
+function genShare(){
+  const s=REPORT.scores.overall, t=tierOf(s);
+  const hook={ excellent:`我的 TikTok 网络环境 ${s} 分，优秀 😎 你敢测吗？`,
+    good:`我的 TikTok 网络环境体检 ${s} 分（良好）✨ 内容一样却 0 播放？先测测网络👇`,
+    warning:`我的 TikTok 网络环境才 ${s} 分⚠️ 难怪 0 播放，你的呢？`,
+    danger:`我的 TikTok 网络环境 ${s} 分，危险🚨 幸好测了。快查你的👇` }[t];
+  const url=location.origin+location.pathname;
+  document.getElementById('shareOut').textContent=`${hook}\n🐰 小白兔TKNC · 6 项诊断 30 秒出报告\n${url}`;
+  document.getElementById('shareOut').classList.add('on');
+  document.getElementById('btnShare').textContent='已生成 · 长按复制上方文案';
+}
+
+/* ============================== WECHAT SHEET ============================== */
+function openWx(){ document.getElementById('wxMask').classList.add('on'); }
+function closeWx(){ document.getElementById('wxMask').classList.remove('on'); }
+document.getElementById('spCta').onclick=openWx;
+document.getElementById('footWx').onclick=(e)=>{e.preventDefault();openWx();};
+document.getElementById('wxClose').onclick=closeWx;
+document.getElementById('wxMask').onclick=(e)=>{ if(e.target.id==='wxMask') closeWx(); };
+document.getElementById('wxCopy').onclick=async()=>{
+  const btn=document.getElementById('wxCopy');
+  try{ await navigator.clipboard.writeText('zac201299'); }catch(_){}
+  btn.textContent='已复制 ✓'; btn.classList.add('done');
+  setTimeout(()=>{ btn.textContent='复制'; btn.classList.remove('done'); },1800);
+};
+
+/* ============================== WIRE ============================== */
+document.getElementById('btnStart').onclick=startScan;
+document.getElementById('btnRerun').onclick=resetChecker;
+document.getElementById('btnShare').onclick=genShare;
+renderSponsors();
+</script>
+</body>
+</html>
