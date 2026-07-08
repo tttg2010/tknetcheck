@@ -36,6 +36,32 @@ function dot(sev) { return `<span class="mod-stdot" style="background:${sevColor
 function worst(sevs) { if (sevs.includes('danger')) return 'danger'; if (sevs.includes('warn')) return 'warn'; return 'ok'; }
 function ipType(r) { return r.isHosting ? '机房 / IDC' : r.isProxy ? '代理' : r.isMobile ? '移动网络' : r.isResidential ? '住宅宽带' : '未知'; }
 
+// ping0 风格的"IP 身份牌"：纯净度 / TikTok 适用度 / IP 类型。
+// 纯净度优先用风控库欺诈分（100-fraud）；没有第三方分时按 IP 类型估算，并标注来源。
+function ipPurity(r) {
+  if (typeof r.riskScore === 'number') return { pct: Math.max(0, Math.min(100, 100 - r.riskScore)), src: '风控库' };
+  const base = r.isHosting ? 28 : r.isProxy ? 42 : r.isMobile ? 72 : r.isResidential ? 88 : 58;
+  return { pct: base, src: '估算' };
+}
+function purityColor(p) { return p >= 70 ? 'var(--good)' : p >= 45 ? 'var(--warn)' : 'var(--bad)'; }
+function ipTypeColor(r) { return r.isHosting ? 'var(--bad)' : (r.isProxy || r.isMobile) ? 'var(--warn)' : r.isResidential ? 'var(--good)' : 'var(--ink-3)'; }
+function ipStars(score) { return Math.max(0, Math.min(5, Math.round((score || 0) / 20))); }
+function ipIdCardHtml(r, ipScore) {
+  const pur = ipPurity(r), pcol = purityColor(pur.pct), tcol = ipTypeColor(r);
+  const n = ipStars(ipScore);
+  const stars = Array.from({ length: 5 }, (_, i) => `<span class="st${i < n ? ' on' : ''}">★</span>`).join('');
+  return `<div class="ip-idcard">
+    <div class="ipc-purity">
+      <div class="ipc-top"><span class="ipc-k">IP 纯净度</span><span class="ipc-src">${pur.src}</span><span class="ipc-pct" style="color:${pcol}">${pur.pct}%</span></div>
+      <div class="ipc-bar"><span style="width:${pur.pct}%;background:${pcol}"></span></div>
+    </div>
+    <div class="ipc-grid">
+      <div class="ipc-cell"><span class="ipc-k">TikTok 适用度</span><span class="ipc-stars" style="color:${scoreColor(ipScore || 0)}">${stars}</span></div>
+      <div class="ipc-cell"><span class="ipc-k">IP 类型</span><span class="ipc-pill" style="color:${tcol};border-color:${tcol}55;background:${tcol}14">${ipType(r)}</span></div>
+    </div>
+  </div>`;
+}
+
 // 建议按 module 精确归类（引擎已在每条 rec 上标了 module）。
 function groupRecs(recs) {
   const g = {};
@@ -78,9 +104,11 @@ function buildModules(rep) {
     if (typeof r.riskScore === 'number') {
       f.push([r.riskScore >= 75 ? 'danger' : r.riskScore >= 25 ? 'warn' : 'ok', `风险评分 ${r.riskScore}/100（越低越好）`]);
     }
+    const pur = ipPurity(r);
     M.push({
       key: 'ip', ic: '🌐', nm: 'IP 身份', score: S.ip || 0,
-      sum: `${esc(r.city || '?')} · ${ipType(r)} · 风险 ${r.riskScore ?? '?'}`,
+      sum: `${esc(r.city || '?')} · ${ipType(r)} · 纯净度 ${pur.pct}%`,
+      topHtml: ipIdCardHtml(r, S.ip || 0),
       findings: f,
       kv: [['IP 类型', ipType(r)], ['公网 IP', esc(r.ip || '?')], ['国家 / 地区', `${esc(r.country || '?')} · ${esc(r.region || '?')}`], ['ASN', esc(r.asn || '?')], ['住宅 IP', r.isResidential ? '是' : '否']]
     });
@@ -280,7 +308,7 @@ export function renderReport(rootEl, rep) {
           <span class="mod-chev">▼</span>
         </div>
         <div class="mod-body"><div class="mod-inner">
-          <div class="findings">${findings}</div>${kv}${tbl}${recs}
+          ${m.topHtml || ''}<div class="findings">${findings}</div>${kv}${tbl}${recs}
         </div></div>
       </div>`;
     }).join('');

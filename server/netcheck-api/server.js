@@ -22,6 +22,7 @@ const PORT = parseInt(process.env.PORT || '8096', 10);
 const IPINFO_TOKEN = process.env.IPINFO_TOKEN || '';
 const SCAM_USER = process.env.SCAMALYTICS_USER || '';
 const SCAM_KEY = process.env.SCAMALYTICS_KEY || '';
+const IPQS_KEY = process.env.IPQS_KEY || '';   // IPQualityScore：设了才启用真欺诈分
 const STORE_DIR = process.env.STORE_DIR || '/var/lib/netcheck/reports';
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -55,27 +56,38 @@ async function callScam(ip) {
     return null;
   } catch (e) { console.warn('[scamalytics] fail', e && e.message); return null; }
 }
+// IPQualityScore：欺诈分数 fraud_score(0-100) + VPN/代理/最近滥用 + 连接类型。设了 IPQS_KEY 才调。
+async function callIpqs(ip) {
+  if (!IPQS_KEY) return null;
+  try { const r = await jget(`https://ipqualityscore.com/api/json/ip/${IPQS_KEY}/${encodeURIComponent(ip)}?strictness=1&fast=1`); return await r.json(); }
+  catch (e) { console.warn('[ipqs] fail', e && e.message); return null; }
+}
 
 function pick(o, keys) { const out = {}; if (!o) return out; for (const k of keys) if (o[k] !== undefined) out[k] = o[k]; return out; }
-function mergeSources(targetIp, ii, ia, sc) {
-  ii = ii || {}; ia = ia || {}; sc = sc || {};
+function mergeSources(targetIp, ii, ia, sc, iq) {
+  ii = ii || {}; ia = ia || {}; sc = sc || {}; iq = iq || {};
   const country = (ii.country || ia.countryCode || '').toUpperCase();
   const countryName = ia.country || (ii.country || '');
   const city = ii.city || ia.city || '';
   const region = ii.region || ia.regionName || '';
   const asn = ii.org || ia.as || '';
   const org = ia.isp || ia.org || ii.org || '';
+  // 布尔：ip-api 为主，IPQS 有更强的 VPN/代理识别则叠加。
   const isHosting = ia.hosting === true;
-  const isProxy = ia.proxy === true;
-  const isMobile = ia.mobile === true;
+  const isProxy = ia.proxy === true || iq.proxy === true || iq.vpn === true || iq.tor === true;
+  const isMobile = ia.mobile === true || iq.mobile === true;
   const isResidential = !isHosting && !isProxy && !isMobile;
+  // 欺诈分：优先 IPQS fraud_score，其次 scamalytics。
   let riskScore = null;
-  if (typeof sc.score === 'number') riskScore = sc.score;
+  if (typeof iq.fraud_score === 'number') riskScore = iq.fraud_score;
+  else if (typeof sc.score === 'number') riskScore = sc.score;
   else if (sc.scamalytics && typeof sc.scamalytics.scamalytics_score === 'number') riskScore = sc.scamalytics.scamalytics_score;
   return {
     ip: targetIp, country, countryName, city, region, asn, org,
     isHosting, isProxy, isMobile, isResidential, riskScore,
-    raw: { ipapi: pick(ia, ['isp', 'org', 'as', 'asname', 'mobile', 'proxy', 'hosting']) }
+    recentAbuse: iq.recent_abuse === true || undefined,
+    connectionType: iq.connection_type || undefined,
+    raw: { ipapi: pick(ia, ['isp', 'org', 'as', 'asname', 'mobile', 'proxy', 'hosting']), ipqs: pick(iq, ['fraud_score', 'proxy', 'vpn', 'tor', 'recent_abuse', 'connection_type']) }
   };
 }
 
@@ -91,8 +103,8 @@ async function handleIpinfo(body, req) {
   if (!rateLimit(targetIp)) return { code: 429, message: '请求过于频繁，请稍后再试' };
   const cached = cacheGet(targetIp);
   if (cached) return { code: 0, data: { ...cached, cached: true } };
-  const [ii, ia, sc] = await Promise.all([callIpinfo(targetIp), callIpApi(targetIp), callScam(targetIp)]);
-  const data = mergeSources(targetIp, ii, ia, sc);
+  const [ii, ia, sc, iq] = await Promise.all([callIpinfo(targetIp), callIpApi(targetIp), callScam(targetIp), callIpqs(targetIp)]);
+  const data = mergeSources(targetIp, ii, ia, sc, iq);
   cacheSet(targetIp, data);
   return { code: 0, data };
 }
