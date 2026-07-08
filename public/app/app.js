@@ -24,7 +24,7 @@ import { startScan, markScanRow, creepGauge, showReport, resetConsole } from './
 import { renderReport } from './ui/report.js';
 import { mountSponsors } from './ui/sponsors.js';
 import { mountWechat, mountFaq, copyText } from './ui/wechat.js';
-import { mountLiveTicker } from './ui/liveticker.js';
+import { mountLiveTicker } from './ui/liveticker.js?v=4';
 
 const CFG = resolveConfig();
 
