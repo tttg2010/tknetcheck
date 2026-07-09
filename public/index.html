@@ -77,8 +77,8 @@
 <!-- 资源版本号：改了 css/js 就 +1，绕过 CloudFlare 边缘缓存（index.html 本身不被 CF 缓存，改动即刻生效） -->
 <link rel="stylesheet" href="css/tokens.css?v=6">
 <link rel="stylesheet" href="css/base.css?v=6">
-<link rel="stylesheet" href="css/components.css?v=13">
-<link rel="stylesheet" href="css/report.css?v=11">
+<link rel="stylesheet" href="css/components.css?v=14">
+<link rel="stylesheet" href="css/report.css?v=14">
 </head>
 <body>
 
@@ -108,6 +108,8 @@
   <!-- == CHECKER CONSOLE (single container, 3 states) == -->
   <section class="console">
     <div class="eyebrow">TIKTOK 网络环境 · <b>诊断仪</b></div>
+    <!-- 访客外网 IP + 国家（进页面即显示，取自服务器 CF 侧）——放最上方最醒目 -->
+    <div class="visitor-ip" id="visitorIp" hidden></div>
     <h1 class="headline">30 秒查出你 TikTok<br><span class="hl">0 播放的网络真相</span></h1>
     <p class="subline">内容一样，别人爆你 0 播放？问题可能不在内容，在<b>网络环境</b>。</p>
 
@@ -137,9 +139,6 @@
         <span class="tdot"></span><span id="tierTxt"></span>
       </div>
     </div>
-
-    <!-- 访客外网 IP + 国家（进页面即显示，取自服务器 CF 侧） -->
-    <div class="visitor-ip" id="visitorIp" hidden></div>
 
     <!-- scan list (state B) -->
     <ol class="scanlist" id="scanList">
@@ -267,6 +266,6 @@
   </div>
 </div>
 
-<script type="module" src="app/app.js?v=12"></script>
+<script type="module" src="app/app.js?v=14"></script>
 </body>
 </html>

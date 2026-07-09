@@ -58,12 +58,9 @@ function purityWord(p) {
 }
 
 // 适用场景评分（借鉴 ping0）：不同场景对 IP 的要求不同，各给 0-5 星。
-// 关键：这些场景都要"能访问国际服务"。若当前网络够不到国际（intlEchoFailed），
-// 无论 IP 本身多干净，实际都用不了 → 全部判 0 星，避免与顶部"高风险"自相矛盾。
+// 说明：intlEchoFailed（浏览器直连回显失败）不代表上不了国际——只要拿到了外国 IP，
+// 就按 IP 质量正常评分。真正上不了国际的情形（拿不到任何 IP）走 restricted 分支。
 function scenarioScores(r) {
-  if (r.intlEchoFailed) {
-    return ['TikTok', '跨境电商', '社媒运营', 'AI 应用'].map(name => ({ name, stars: 0, blocked: true }));
-  }
   const pur = ipPurity(r).pct;
   const friendly = !!(r.country && FRIENDLY_CC.includes(String(r.country).toUpperCase()));
   const clamp = (x) => Math.max(0, Math.min(100, x));
@@ -90,19 +87,16 @@ function ipIdCardHtml(r, ipScore) {
   const risk = typeof r.riskScore === 'number' ? r.riskScore : (100 - pur.pct);
   const rcol = riskColor(risk);
   const rw = purityWord(100 - risk);          // 判词按 纯净度=100-风险
-  const blocked = !!r.intlEchoFailed;
   const scen = scenarioScores(r);
   const scenHtml = scen.map(x => {
-    const v = x.blocked ? { t: '不可用', c: 'var(--bad)' } : scenVerdict(x.stars);
+    const v = scenVerdict(x.stars);
     return `<div class="scen-card">
       <div class="scen-name">${x.name}</div>
       ${starRow(x.stars, v.c)}
       <div class="scen-badge" style="color:${v.c};border-color:${v.c}55;background:${v.c}14">${v.t}</div>
     </div>`;
   }).join('');
-  const scenSub = blocked
-    ? '<span class="ipc-scen-sub warn">当前网络无法访问国际，实际不可用</span>'
-    : '<span class="ipc-scen-sub">按 IP 质量估算</span>';
+  const scenSub = '<span class="ipc-scen-sub">按 IP 质量估算</span>';
   return `<div class="ip-idcard">
     <div class="ipc-risk">
       <div class="ipc-risk-head">
@@ -158,7 +152,7 @@ function buildModules(rep) {
       M.push({ key: 'ip', ic: '🌐', nm: 'IP 身份', score: S.ip || 0, sum, findings }); return;
     }
     const f = [
-      ...(r.intlEchoFailed ? [['warn', '浏览器够不到国际回显服务，以下 IP 取自服务器侧（没开代理时即你的真实出口 IP）']] : []),
+      ...(r.intlEchoFailed ? [['info', '以下 IP 取自服务器侧（Cloudflare 视角），即你当前的真实出口 IP']] : []),
       ['info', `地理位置 <b>${esc(r.countryName || r.country || '未知')} · ${esc(r.city || '?')}</b>`],
       ['info', `运营商 <b>${esc(r.org || r.asn || '未知')}</b>`],
       [r.isHosting ? 'danger' : 'ok', r.isHosting ? '检测到机房 / IDC IP' : '非机房 IP，来源为真实住宅宽带'],
@@ -306,11 +300,11 @@ export function renderReport(rootEl, rep) {
   const T = TIERS[t] || TIERS.warning;
 
   const q = (sel) => rootEl.querySelector(sel);
-  // 国际网络受限/未联网时，顶部判词直接点破风险，不用泛泛的分数判词。
-  // intlEchoFailed：IP 虽经后端 CF 侧兜底拿到了，但浏览器够不到国际回显——同样点破。
+  // 只有完全拿不到 IP（restricted/offline）才判"无法访问国际"。intlEchoFailed 只是浏览器
+  // 直连回显失败、但已从 CF 侧拿到 IP——拿到外国 IP 本身就证明国际访问是通的，不点破。
   const ipR = (rep.results || {}).ip;
   const restricted = ipR && (ipR.restricted || ipR.offline);
-  const noIntl = restricted || (ipR && ipR.intlEchoFailed);
+  const noIntl = restricted;
   const vH = noIntl ? (ipR.offline ? '设备未联网，无法检测' : '你的网络无法访问国际服务') : T.verdict[0];
   const vP = noIntl ? (ipR.offline ? '请检查网络连接后重试' : '这是高风险环境——TikTok 需要能访问国际网络。请开启代理、连上要发视频的网络后重测') : T.verdict[1];
   if (q('#verdictH')) q('#verdictH').textContent = vH;
