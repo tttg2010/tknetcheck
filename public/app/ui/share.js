@@ -4,7 +4,7 @@
 // 分享页没有检测流程，所以自己画一个静态速度表（同原型样式），从 overall 定格。
 
 import { api } from '../api.js?v=10';
-import { renderReport, TIERS, tierName, emojiFor } from './report.js?v=10';
+import { renderReport, TIERS, tierName, emojiFor } from './report.js?v=11';
 
 const ARC_LEN = 461.8;
 

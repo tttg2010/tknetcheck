@@ -48,9 +48,18 @@
 .ipc-src{font-size:10px;color:var(--ink-4);border:1px solid var(--line-2);border-radius:4px;padding:0 5px;line-height:15px}
 .ipc-pct{margin-left:auto;font-family:var(--mono);font-weight:700;font-size:20px}
 .ipc-pct .u{font-size:12px;color:var(--ink-3);margin-left:1px}
+/* 风险评分头部大数字（与模块同级地位，ping0 风格）*/
+.ipc-risk-head{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.ipc-risk-main{display:flex;align-items:baseline;gap:11px;margin-bottom:11px}
+.ipc-risk-num{font-family:var(--mono);font-weight:800;font-size:36px;line-height:.9;letter-spacing:-.02em}
+.ipc-risk-num .u{font-size:14px;color:var(--ink-3);font-weight:500;margin-left:2px}
+.ipc-risk-word{font-size:17px;font-weight:750}
+.ipc-risk-hint{margin-left:auto;font-size:11px;color:var(--ink-4)}
 /* 绿黄红渐变刻度尺 + 白点标记（ping0 风格：一眼看落在安全/危险区）*/
 .ipc-gauge{position:relative;height:8px;border-radius:99px;margin-top:2px;
   background:linear-gradient(90deg,var(--bad) 0%,var(--warn) 50%,var(--good) 100%)}
+/* 风险语义：左绿(安全)→右红(危险)，marker 在 risk% */
+.ipc-gauge.risk{background:linear-gradient(90deg,var(--good) 0%,var(--warn) 50%,var(--bad) 100%)}
 .ipc-marker{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;
   background:#fff;border:2px solid var(--inset);transform:translate(-50%,-50%);
   box-shadow:0 1px 5px rgba(0,0,0,.55);transition:left .8s cubic-bezier(.22,.61,.36,1)}

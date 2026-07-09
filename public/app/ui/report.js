@@ -44,6 +44,7 @@ function ipPurity(r) {
   return { pct: base, src: '估算' };
 }
 function purityColor(p) { return p >= 70 ? 'var(--good)' : p >= 45 ? 'var(--warn)' : 'var(--bad)'; }
+function riskColor(risk) { return risk <= 30 ? 'var(--good)' : risk <= 55 ? 'var(--warn)' : 'var(--bad)'; }
 function ipTypeColor(r) { return r.isHosting ? 'var(--bad)' : (r.isProxy || r.isMobile) ? 'var(--warn)' : r.isResidential ? 'var(--good)' : 'var(--ink-3)'; }
 function starsFrom(score) { return Math.max(0, Math.min(5, Math.round((score || 0) / 20))); }
 
@@ -85,8 +86,10 @@ function scenVerdict(stars) { return stars >= 3 ? { t: '适合', c: 'var(--good)
 function starRow(n, color) { return `<span class="ipc-stars" style="color:${color}">${Array.from({ length: 5 }, (_, i) => `<span class="st${i < n ? ' on' : ''}">★</span>`).join('')}</span>`; }
 
 function ipIdCardHtml(r, ipScore) {
-  const pur = ipPurity(r), pcol = purityColor(pur.pct), tcol = ipTypeColor(r);
-  const pw = purityWord(pur.pct);
+  const pur = ipPurity(r), tcol = ipTypeColor(r);
+  const risk = typeof r.riskScore === 'number' ? r.riskScore : (100 - pur.pct);
+  const rcol = riskColor(risk);
+  const rw = purityWord(100 - risk);          // 判词按 纯净度=100-风险
   const blocked = !!r.intlEchoFailed;
   const scen = scenarioScores(r);
   const scenHtml = scen.map(x => {
@@ -101,15 +104,18 @@ function ipIdCardHtml(r, ipScore) {
     ? '<span class="ipc-scen-sub warn">当前网络无法访问国际，实际不可用</span>'
     : '<span class="ipc-scen-sub">按 IP 质量估算</span>';
   return `<div class="ip-idcard">
-    <div class="ipc-purity">
-      <div class="ipc-top">
-        <span class="ipc-k">IP 纯净度</span><span class="ipc-src">${pur.src}</span>
+    <div class="ipc-risk">
+      <div class="ipc-risk-head">
+        <span class="ipc-k">风控值 · 风险评分</span><span class="ipc-src">${pur.src}</span>
         <span class="ipc-pill" style="color:${tcol};border-color:${tcol}55;background:${tcol}14">${ipType(r)}</span>
-        <span class="ipc-pct" style="color:${pcol}">${pur.pct}<span class="u">%</span></span>
       </div>
-      <div class="ipc-gauge"><div class="ipc-marker" style="left:${pur.pct}%"></div></div>
-      <div class="ipc-scale"><span>0 · 高危</span><span>可疑</span><span>安全 · 100</span></div>
-      <div class="ipc-verdict"><span class="ipc-vword" style="color:${pw.c}">${pw.t}</span><span class="ipc-vsub">风险评分 ${typeof r.riskScore === 'number' ? r.riskScore : (100 - pur.pct)}/100 · 越低越好</span></div>
+      <div class="ipc-risk-main">
+        <span class="ipc-risk-num" style="color:${rcol}">${risk}<span class="u">/100</span></span>
+        <span class="ipc-risk-word" style="color:${rcol}">${rw.t}</span>
+        <span class="ipc-risk-hint">越低越安全</span>
+      </div>
+      <div class="ipc-gauge risk"><div class="ipc-marker" style="left:${risk}%"></div></div>
+      <div class="ipc-scale"><span>0 · 安全</span><span>可疑</span><span>高危 · 100</span></div>
     </div>
     <div class="ipc-scen">
       <div class="ipc-scen-t">适用场景 ${scenSub}</div>
@@ -158,9 +164,6 @@ function buildModules(rep) {
       [r.isHosting ? 'danger' : 'ok', r.isHosting ? '检测到机房 / IDC IP' : '非机房 IP，来源为真实住宅宽带'],
       [r.isProxy ? 'warn' : 'ok', r.isProxy ? '在风险库中被标记为代理' : '未被标记为代理']
     ];
-    if (typeof r.riskScore === 'number') {
-      f.push([r.riskScore >= 75 ? 'danger' : r.riskScore >= 25 ? 'warn' : 'ok', `风险评分 ${r.riskScore}/100（越低越好）`]);
-    }
     const pur = ipPurity(r);
     M.push({
       key: 'ip', ic: '🌐', nm: 'IP 身份', score: S.ip || 0,

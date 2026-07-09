@@ -21,7 +21,7 @@ import {
 } from './engine/index.js';
 
 import { startScan, markScanRow, creepGauge, showReport, resetConsole } from './ui/console.js';
-import { renderReport } from './ui/report.js?v=10';
+import { renderReport } from './ui/report.js?v=11';
 import { mountSponsors } from './ui/sponsors.js';
 import { mountWechat, mountFaq, copyText } from './ui/wechat.js';
 import { mountLiveTicker } from './ui/liveticker.js?v=10';
