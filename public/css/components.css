@@ -92,8 +92,8 @@
 .vip-k{color:var(--ink-3);font-size:11px}
 .vip-ip{font-family:var(--mono);color:var(--ink);font-weight:650}
 .vip-loc{color:var(--ink-2)}
-/* 检测中/报告态隐藏（报告里有完整 IP 身份牌）*/
-.console:has(#scanList.on) .visitor-ip,.console:has(#report.on) .visitor-ip{display:none}
+/* 只在报告态隐藏（报告里有完整 IP 风险身份牌）；检测中保持显示 */
+.console:has(#report.on) .visitor-ip{display:none}
 
 /* gauge */
 .gauge-wrap{display:flex;flex-direction:column;align-items:center;margin:14px 0 6px}
