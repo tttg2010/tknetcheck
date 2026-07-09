@@ -52,7 +52,7 @@
         {
           "@type": "Question",
           "name": "检测安全吗？会不会暴露账号？",
-          "acceptedAnswer": { "@type": "Answer", "text": "安全。检测全程在浏览器本地发起网络请求，不需要登录 TikTok、不碰账号密码。不存储原始公网 IP、真实内网 IP 和 Canvas 指纹原图，只保留匿名派生指标最多 7 天。" }
+          "acceptedAnswer": { "@type": "Answer", "text": "安全。检测全程在浏览器本地发起网络请求，不需要登录 TikTok、不碰账号密码。不存 WebRTC 泄漏的真实内网 IP 和 Canvas 指纹原图。为保障运营与安全，会留存访问日志（含出口 IP 与地区），不向第三方出售。" }
         },
         {
           "@type": "Question",
@@ -77,7 +77,7 @@
 <!-- 资源版本号：改了 css/js 就 +1，绕过 CloudFlare 边缘缓存（index.html 本身不被 CF 缓存，改动即刻生效） -->
 <link rel="stylesheet" href="css/tokens.css?v=6">
 <link rel="stylesheet" href="css/base.css?v=6">
-<link rel="stylesheet" href="css/components.css?v=14">
+<link rel="stylesheet" href="css/components.css?v=16">
 <link rel="stylesheet" href="css/report.css?v=14">
 </head>
 <body>
@@ -86,10 +86,10 @@
 <nav class="nav">
   <div class="nav-in">
     <div class="brand"><span class="dot">🐰</span>小白兔TKNC<small>NETCHECK</small></div>
-    <a class="gh" href="https://github.com/" target="_blank" rel="noopener" aria-label="GitHub">
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-      GitHub
-    </a>
+    <button class="gh" id="btnShareSite" aria-label="分享">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
+      分享
+    </button>
   </div>
 </nav>
 
@@ -227,7 +227,7 @@
     <h2 class="sec-t">FAQ</h2>
     <div id="faqList">
       <div class="faq-item"><button class="faq-q">0 播放真的和网络有关系吗？<span class="fc">＋</span></button><div class="faq-a"><div class="inner">有。TikTok 在推流前会评估你的网络环境是否「可信」。机房 IP、DNS 与时区不匹配、WebRTC 泄漏真实 IP 等信号，会让算法判定为「高风险环境」，从而限制初始推荐量——表现就是内容不错却 0 播放。</div></div></div>
-      <div class="faq-item"><button class="faq-q">检测安全吗？会不会暴露账号？<span class="fc">＋</span></button><div class="faq-a"><div class="inner">安全。检测全程在你的浏览器本地发起网络请求，不需要登录 TikTok、不碰你的账号密码。我们不存储你的原始公网 IP、真实内网 IP 和 Canvas 指纹原图，只保留匿名派生指标最多 7 天。</div></div></div>
+      <div class="faq-item"><button class="faq-q">检测安全吗？会不会暴露账号？<span class="fc">＋</span></button><div class="faq-a"><div class="inner">安全。检测全程在你的浏览器本地发起网络请求，不需要登录 TikTok、不碰你的账号密码。不存 WebRTC 泄漏的真实内网 IP 和 Canvas 指纹原图。为保障服务运营与安全，会留存访问日志（含出口 IP 与地区），不向第三方出售任何数据。</div></div></div>
       <div class="faq-item"><button class="faq-q">分数多少算合格？<span class="fc">＋</span></button><div class="faq-a"><div class="inner">90+ 优秀，可放心养号发布；70–89 良好，优化少数项即可；50–69 警告，存在风险，不建议发新视频；50 以下危险，建议立即排查环境再操作。</div></div></div>
       <div class="faq-item"><button class="faq-q">多久检测一次比较好？<span class="fc">＋</span></button><div class="faq-a"><div class="inner">每次换 IP、换网络、换代理线路后都建议测一次；稳定使用时一周一次即可。检测要用真正发视频的那台手机、那个网络。</div></div></div>
       <div class="faq-item"><button class="faq-q">机房 IP 和住宅 IP 有什么区别？<span class="fc">＋</span></button><div class="faq-a"><div class="inner">机房 / IDC IP 来自数据中心（AWS、Vultr 等），一个 IP 段被大量用户共用，TikTok 极易识别为代理，是养号大忌；住宅 IP 来自真实家庭宽带（如 Comcast），干净、风险低，是养号首选。</div></div></div>
@@ -240,12 +240,11 @@
 <footer class="footer">
   <div class="wrap">
     <p class="foot-priv">
-      隐私声明：本工具<b>不存储你的原始公网 IP</b>、不存 WebRTC 泄漏的真实 IP、不存 Canvas 指纹原图（仅 SHA-256 哈希）。匿名派生指标最多保留 7 天用于分享，之后自动删除，不向第三方出售任何数据。
+      隐私声明：本工具不存 WebRTC 泄漏的真实 IP、不存 Canvas 指纹原图（仅 SHA-256 哈希），不向第三方出售任何数据。为保障服务运营与安全，会留存访问日志（含出口 IP 与地区）。
     </p>
     <div class="foot-links">
-      <a href="https://github.com/" target="_blank" rel="noopener">MIT License</a>
-      <a href="https://github.com/" target="_blank" rel="noopener">GitHub 开源</a>
       <a href="#" id="footWx">联系管理员</a>
+      <a href="#" id="adminLink">管理</a>
     </div>
   </div>
 </footer>
@@ -266,6 +265,19 @@
   </div>
 </div>
 
-<script type="module" src="app/app.js?v=15"></script>
+<!-- == ADMIN 日志面板 == -->
+<div class="mask" id="adminMask">
+  <div class="sheet admin-sheet">
+    <div class="grip"></div>
+    <h3>访问日志 <span class="admin-count" id="adminCount"></span></h3>
+    <div class="admin-table-wrap"><table class="admin-table" id="adminTable"></table></div>
+    <button class="close" id="adminClose">关闭</button>
+  </div>
+</div>
+
+<!-- 轻提示 -->
+<div class="toast" id="toast" hidden></div>
+
+<script type="module" src="app/app.js?v=16"></script>
 </body>
 </html>

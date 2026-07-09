@@ -43,5 +43,7 @@ export const api = {
   getReport: (shareId) => callFn('getReport', { shareId }),
   // 社会证明气泡：匿名记一条结果 / 拉近期结果
   recordResult: (r) => callFn('recordResult', r),
-  recentResults: (n) => callFn('recentResults', { n })
+  recentResults: (n) => callFn('recentResults', { n }),
+  // 管理：凭口令拉访问日志
+  adminLogs: (password, n) => callFn('adminLogs', { password, n })
 };

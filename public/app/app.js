@@ -6,7 +6,7 @@
 // UI 换成单容器三态（console.js）+ 原型报告渲染（ui/report.js）。
 
 import { state, bus, resetState } from './state.js';
-import { api } from './api.js?v=10';
+import { api } from './api.js?v=16';
 
 import { runIp } from './modules/ip.js?v=7';
 import { runDns } from './modules/dns.js';
@@ -262,6 +262,57 @@ async function mountVisitorIp() {
   } catch (_) { /* 静默，不影响主流程 */ }
 }
 
+// 轻提示
+function toast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg; t.hidden = false; t.classList.add('on');
+  clearTimeout(toast._t); toast._t = setTimeout(() => { t.classList.remove('on'); setTimeout(() => t.hidden = true, 300); }, 1800);
+}
+
+// 顶部"分享"：优先系统分享面板，否则复制链接。
+async function shareSite() {
+  const url = location.origin + location.pathname.replace(/index\.html$/, '');
+  const data = { title: '小白兔TKNC · TikTok 网络环境检测', text: '30 秒查出你 TikTok 0 播放的网络真相，免费检测 👇', url };
+  if (navigator.share) { try { await navigator.share(data); } catch (_) { /* 用户取消 */ } return; }
+  try { await copyText(`${data.text}\n${url}`); toast('分享链接已复制'); }
+  catch (_) { toast(url); }
+}
+
+// 底部"管理"：口令 → 拉访问日志 → 渲染表格。
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function relTimeCN(at) {
+  const m = Math.floor(Math.max(0, Date.now() - at) / 60000);
+  if (m < 1) return '刚刚'; if (m < 60) return m + ' 分钟前';
+  const h = Math.floor(m / 60); if (h < 24) return h + ' 小时前';
+  return new Date(at).toLocaleString('zh-CN');
+}
+function renderAdminLogs(logs, total) {
+  const tb = document.getElementById('adminTable');
+  const cnt = document.getElementById('adminCount');
+  if (cnt) cnt.textContent = `共 ${total} 条`;
+  const head = `<thead><tr><th>时间</th><th>IP</th><th>地区</th><th>类型</th><th>风险</th><th>运营商</th></tr></thead>`;
+  const rows = (logs || []).map(v => `<tr>
+    <td>${esc(relTimeCN(v.at))}</td>
+    <td class="mono">${esc(v.ip || v.clientIp || '?')}</td>
+    <td>${esc([v.countryName || v.country, v.city].filter(Boolean).join(' · ') || '?')}</td>
+    <td>${esc(v.type || '?')}</td>
+    <td class="mono">${v.risk == null ? '—' : esc(v.risk)}</td>
+    <td class="mono ell" title="${esc(v.org)}">${esc(v.org || '?')}</td>
+  </tr>`).join('');
+  tb.innerHTML = head + `<tbody>${rows || '<tr><td colspan="6" style="text-align:center;color:var(--ink-3)">暂无日志</td></tr>'}</tbody>`;
+  document.getElementById('adminMask').classList.add('on');
+}
+async function openAdmin() {
+  const pass = prompt('请输入管理密码：');
+  if (pass == null) return;
+  try {
+    const res = await api.adminLogs(pass, 300);
+    if (!res || res.code !== 0) { toast((res && res.message) || '密码错误'); return; }
+    renderAdminLogs(res.logs, res.total);
+  } catch (e) { toast('加载失败：' + ((e && e.message) || e)); }
+}
+
 // ── 引导 ────────────────────────────────────────────────────────
 function bootstrap() {
   const wx = mountWechat();
@@ -273,6 +324,12 @@ function bootstrap() {
   document.getElementById('btnStart').onclick = start;
   document.getElementById('btnCancel').onclick = cancel;
   document.getElementById('btnRerun').onclick = rerun;
+
+  // 顶部分享 + 底部管理
+  const bss = document.getElementById('btnShareSite'); if (bss) bss.onclick = shareSite;
+  const al = document.getElementById('adminLink'); if (al) al.onclick = (e) => { e.preventDefault(); openAdmin(); };
+  const ac = document.getElementById('adminClose'); if (ac) ac.onclick = () => document.getElementById('adminMask').classList.remove('on');
+  const am = document.getElementById('adminMask'); if (am) am.onclick = (e) => { if (e.target.id === 'adminMask') am.classList.remove('on'); };
 
   // 分享按钮：首次点击生成，之后点击复制（文案已在 dataset.copy）。
   const btnShare = document.getElementById('btnShare');

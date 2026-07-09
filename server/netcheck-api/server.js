@@ -24,6 +24,7 @@ const SCAM_USER = process.env.SCAMALYTICS_USER || '';
 const SCAM_KEY = process.env.SCAMALYTICS_KEY || '';
 const IPQS_KEY = process.env.IPQS_KEY || '';   // IPQualityScore：设了才启用真欺诈分
 const PROXYCHECK_KEY = process.env.PROXYCHECK_KEY || ''; // proxycheck.io：设了才启用 risk 风险分（免费 1000/天）
+const ADMIN_PASS = process.env.ADMIN_PASS || '133499';   // 管理日志面板口令
 const STORE_DIR = process.env.STORE_DIR || '/var/lib/netcheck/reports';
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -123,6 +124,7 @@ async function handleIpinfo(body, req) {
   const [ii, ia, sc, iq, pc] = await Promise.all([callIpinfo(targetIp), callIpApi(targetIp), callScam(targetIp), callIpqs(targetIp), callProxycheck(targetIp)]);
   const data = mergeSources(targetIp, ii, ia, sc, iq, pc);
   cacheSet(targetIp, data);
+  logVisit(data, req);            // 记访问日志（缓存命中的重复请求不会走到这，天然去重）
   return { code: 0, data };
 }
 
@@ -183,6 +185,34 @@ function handleRecent(body) {
   return { code: 0, results: loadRecent().slice(0, n) };
 }
 
+// ── 访问日志（管理面板）：含 IP / 城市 / 国家 / 出口 IP / UA ─────────
+const VISITS_FILE = path.join(STORE_DIR, '_visits.json');
+const VISITS_MAX = 1000;
+let visitsCache = null;
+function loadVisits() { if (visitsCache) return visitsCache; try { visitsCache = JSON.parse(fs.readFileSync(VISITS_FILE, 'utf-8')) || []; } catch (_) { visitsCache = []; } return visitsCache; }
+function saveVisits(a) { visitsCache = a; try { fs.writeFileSync(VISITS_FILE, JSON.stringify(a)); } catch (_) {} }
+function logVisit(data, req) {
+  try {
+    const h = (req && req.headers) || {};
+    const rec = {
+      ip: data.ip || '', city: data.city || '', region: data.region || '',
+      country: data.country || '', countryName: data.countryName || '', org: data.org || '',
+      type: data.isHosting ? '机房' : data.isProxy ? '代理' : data.isMobile ? '移动' : data.isResidential ? '住宅' : '?',
+      risk: (typeof data.riskScore === 'number' ? data.riskScore : null),
+      clientIp: (h['cf-connecting-ip'] || h['x-real-ip'] || '').trim(),
+      ua: (h['user-agent'] || '').slice(0, 180),
+      at: Date.now()
+    };
+    const a = loadVisits(); a.unshift(rec); if (a.length > VISITS_MAX) a.length = VISITS_MAX; saveVisits(a);
+  } catch (_) {}
+}
+function handleAdminLogs(body) {
+  if (!body || String(body.password || '') !== ADMIN_PASS) return { code: 403, message: '密码错误' };
+  const n = Math.max(1, Math.min(500, parseInt(body.n, 10) || 200));
+  const all = loadVisits();
+  return { code: 0, total: all.length, logs: all.slice(0, n) };
+}
+
 // 每 6 小时清理过期报告
 setInterval(() => {
   try { for (const f of fs.readdirSync(STORE_DIR)) { if (!f.endsWith('.json')) continue; const p = path.join(STORE_DIR, f); try { const d = JSON.parse(fs.readFileSync(p, 'utf-8')); if (d.expiresAt && Date.now() > d.expiresAt) fs.unlinkSync(p); } catch (_) {} } } catch (_) {}
@@ -205,6 +235,7 @@ const server = http.createServer(async (req, res) => {
     if (url === '/getReport') return send(handleGet(body));
     if (url === '/recordResult') return send(handleRecord(body));
     if (url === '/recentResults') return send(handleRecent(body));
+    if (url === '/adminLogs') return send(handleAdminLogs(body));
     return send({ code: 404, message: 'no such route' }, 404);
   } catch (e) { return send({ code: 500, message: String((e && e.message) || e) }, 500); }
 });
