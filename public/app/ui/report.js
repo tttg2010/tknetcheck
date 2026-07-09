@@ -96,6 +96,7 @@ function buildModules(rep) {
       M.push({ key: 'ip', ic: '🌐', nm: 'IP 身份', score: S.ip || 0, sum, findings }); return;
     }
     const f = [
+      ...(r.intlEchoFailed ? [['warn', '浏览器够不到国际回显服务，以下 IP 取自服务器侧（没开代理时即你的真实出口 IP）']] : []),
       ['info', `地理位置 <b>${esc(r.countryName || r.country || '未知')} · ${esc(r.city || '?')}</b>`],
       ['info', `运营商 <b>${esc(r.org || r.asn || '未知')}</b>`],
       [r.isHosting ? 'danger' : 'ok', r.isHosting ? '检测到机房 / IDC IP' : '非机房 IP，来源为真实住宅宽带'],
@@ -247,10 +248,12 @@ export function renderReport(rootEl, rep) {
 
   const q = (sel) => rootEl.querySelector(sel);
   // 国际网络受限/未联网时，顶部判词直接点破风险，不用泛泛的分数判词。
+  // intlEchoFailed：IP 虽经后端 CF 侧兜底拿到了，但浏览器够不到国际回显——同样点破。
   const ipR = (rep.results || {}).ip;
   const restricted = ipR && (ipR.restricted || ipR.offline);
-  const vH = restricted ? (ipR.offline ? '设备未联网，无法检测' : '你的网络无法访问国际服务') : T.verdict[0];
-  const vP = restricted ? (ipR.offline ? '请检查网络连接后重试' : '这是高风险环境——TikTok 需要能访问国际网络。请开启代理、连上要发视频的网络后重测') : T.verdict[1];
+  const noIntl = restricted || (ipR && ipR.intlEchoFailed);
+  const vH = noIntl ? (ipR.offline ? '设备未联网，无法检测' : '你的网络无法访问国际服务') : T.verdict[0];
+  const vP = noIntl ? (ipR.offline ? '请检查网络连接后重试' : '这是高风险环境——TikTok 需要能访问国际网络。请开启代理、连上要发视频的网络后重测') : T.verdict[1];
   if (q('#verdictH')) q('#verdictH').textContent = vH;
   if (q('#verdictP')) q('#verdictP').textContent = vP;
   if (q('#verdictMeta')) q('#verdictMeta').textContent = rep.meta || '';
@@ -258,7 +261,7 @@ export function renderReport(rootEl, rep) {
   // 受限（非未联网）时露出"解决方案"引导卡，顺势把高意向用户导到顶部赞助商。
   const fix = q('#fixCta');
   if (fix) {
-    const showFix = restricted && !ipR.offline;
+    const showFix = noIntl && !ipR.offline;
     fix.hidden = !showFix;
     if (showFix && !fix.dataset.wired) {
       fix.dataset.wired = '1';

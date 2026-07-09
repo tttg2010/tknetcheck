@@ -8,7 +8,7 @@
 import { state, bus, resetState } from './state.js';
 import { api } from './api.js?v=6';
 
-import { runIp } from './modules/ip.js';
+import { runIp } from './modules/ip.js?v=7';
 import { runDns } from './modules/dns.js';
 import { runWebRTC } from './modules/webrtc.js';
 import { runStability } from './modules/stability.js';
@@ -21,7 +21,7 @@ import {
 } from './engine/index.js';
 
 import { startScan, markScanRow, creepGauge, showReport, resetConsole } from './ui/console.js';
-import { renderReport } from './ui/report.js?v=5';
+import { renderReport } from './ui/report.js?v=7';
 import { mountSponsors } from './ui/sponsors.js';
 import { mountWechat, mountFaq, copyText } from './ui/wechat.js';
 import { mountLiveTicker } from './ui/liveticker.js?v=4';

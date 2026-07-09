@@ -52,41 +52,41 @@ async function detectPublicIp() {
 export async function runIp() {
   const startedAt = performance.now();
   try {
-    // Step 1 — browser detects its own public (proxy) IP.
+    // Step 1 — 浏览器尝试用国际回显服务拿到自己的公网(代理)IP。
+    // 拿不到不代表失败：国内直连/代理未生效时够不到国际回显——此时改用后端
+    // 从 Cloudflare 侧看到的出口 IP（CF-Connecting-IP）兜底，这样也能出 IP 画像。
     const publicIp = await detectPublicIp();
-    if (!publicIp) {
-      // 拿不到公网 IP 分两种情况，且都是「网络本身」的信号，不是工具坏了：
-      //   offline    —— 设备根本没联网
-      //   restricted —— 在线，但连 Cloudflare / ipify 这些国际回显服务都到不了
-      //                 → 国内直连（没开代理）或代理未生效。对 TikTok 而言这是高风险环境。
+    const intlEchoFailed = !publicIp;
+
+    // Step 2 — 后端富化。传到浏览器探到的 IP 优先；没探到则不传，后端用 CF-IP 兜底。
+    let res;
+    try {
+      res = await api.ipinfo(publicIp || null);
+    } catch (e) {
+      // 后端也连不上：区分未联网 / 国际网络受限。
       const offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
       return {
-        ok: false,
-        offline,
-        restricted: !offline,
+        ok: false, offline, restricted: !offline,
         durationMs: Math.round(performance.now() - startedAt),
-        error: offline
-          ? '设备未联网'
-          : '国际网络不可达 — 当前可能是国内直连或代理未生效'
+        error: offline ? '设备未联网'
+          : (intlEchoFailed ? '国际网络不可达 — 当前可能是国内直连或代理未生效' : (e && e.message) || String(e))
       };
     }
-
-    // Step 2 — cloud function enriches the IP (ASN, hosting, risk score).
-    const res = await api.ipinfo(publicIp);
     const data = (res && (res.data || res)) || {};
 
-    // If the cloud function itself returned a non-zero code, surface it.
-    if (res && typeof res.code === 'number' && res.code !== 0 && !data.country) {
+    // 后端也没能定位到 IP（无 country）→ 退回受限判定。
+    if (!data.country && !data.ip) {
+      const offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
       return {
-        ok: false,
+        ok: false, offline, restricted: !offline && intlEchoFailed,
         durationMs: Math.round(performance.now() - startedAt),
-        error: `云函数返回错误：${res.message || res.code}`,
-        ip: publicIp
+        error: intlEchoFailed ? '国际网络不可达 — 当前可能是国内直连或代理未生效' : `后端返回错误：${res && (res.message || res.code)}`
       };
     }
 
     return {
       ok: true,
+      intlEchoFailed,               // true = 浏览器够不到国际回显，IP 取自服务器侧
       durationMs: Math.round(performance.now() - startedAt),
       // normalized fields (used by scoring + report)
       ip: data.ip || publicIp,
