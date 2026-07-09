@@ -156,6 +156,33 @@ function handleGet(body) {
   return { code: 0, shareId: doc.shareId, report: doc.report, createdAt: doc.createdAt, expiresAt: doc.expiresAt };
 }
 
+// ── 近期结果（社会证明气泡的真实数据）─────────────────────────────
+// 只记匿名派生：分数 + 档位 + 国家码，绝不存 IP。滚动保留最近 RECENT_MAX 条。
+const RECENT_FILE = path.join(STORE_DIR, '_recent.json');
+const RECENT_MAX = 80;
+let recentCache = null;
+function loadRecent() {
+  if (recentCache) return recentCache;
+  try { recentCache = JSON.parse(fs.readFileSync(RECENT_FILE, 'utf-8')) || []; } catch (_) { recentCache = []; }
+  return recentCache;
+}
+function saveRecent(arr) { recentCache = arr; try { fs.writeFileSync(RECENT_FILE, JSON.stringify(arr)); } catch (_) {} }
+function handleRecord(body) {
+  const score = Math.max(0, Math.min(100, parseInt(body && body.score, 10) || 0));
+  const tier = ['excellent', 'good', 'warning', 'danger'].includes(body && body.tier) ? body.tier : null;
+  const country = (typeof (body && body.country) === 'string' ? body.country : '').replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
+  if (!tier) return { code: 400, message: 'bad tier' };
+  const arr = loadRecent();
+  arr.unshift({ score, tier, country, at: Date.now() });
+  if (arr.length > RECENT_MAX) arr.length = RECENT_MAX;
+  saveRecent(arr);
+  return { code: 0 };
+}
+function handleRecent(body) {
+  const n = Math.max(1, Math.min(40, parseInt(body && body.n, 10) || 24));
+  return { code: 0, results: loadRecent().slice(0, n) };
+}
+
 // 每 6 小时清理过期报告
 setInterval(() => {
   try { for (const f of fs.readdirSync(STORE_DIR)) { if (!f.endsWith('.json')) continue; const p = path.join(STORE_DIR, f); try { const d = JSON.parse(fs.readFileSync(p, 'utf-8')); if (d.expiresAt && Date.now() > d.expiresAt) fs.unlinkSync(p); } catch (_) {} } } catch (_) {}
@@ -176,6 +203,8 @@ const server = http.createServer(async (req, res) => {
     if (url === '/ipinfo') return send(await handleIpinfo(body, req));
     if (url === '/saveReport') return send(handleSave(body));
     if (url === '/getReport') return send(handleGet(body));
+    if (url === '/recordResult') return send(handleRecord(body));
+    if (url === '/recentResults') return send(handleRecent(body));
     return send({ code: 404, message: 'no such route' }, 404);
   } catch (e) { return send({ code: 500, message: String((e && e.message) || e) }, 500); }
 });

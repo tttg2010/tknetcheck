@@ -107,7 +107,8 @@ function ipIdCardHtml(r, ipScore) {
         <span class="ipc-pill" style="color:${tcol};border-color:${tcol}55;background:${tcol}14">${ipType(r)}</span>
         <span class="ipc-pct" style="color:${pcol}">${pur.pct}<span class="u">%</span></span>
       </div>
-      <div class="ipc-bar"><span style="width:${pur.pct}%;background:${pcol}"></span></div>
+      <div class="ipc-gauge"><div class="ipc-marker" style="left:${pur.pct}%"></div></div>
+      <div class="ipc-scale"><span>0 · 高危</span><span>可疑</span><span>安全 · 100</span></div>
       <div class="ipc-verdict"><span class="ipc-vword" style="color:${pw.c}">${pw.t}</span><span class="ipc-vsub">风险评分 ${typeof r.riskScore === 'number' ? r.riskScore : (100 - pur.pct)}/100 · 越低越好</span></div>
     </div>
     <div class="ipc-scen">

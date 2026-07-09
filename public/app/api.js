@@ -40,5 +40,8 @@ export const api = {
   // cannot reliably see the caller IP.
   ipinfo: (ip) => callFn('ipinfo', ip ? { ip } : {}),
   saveReport: (report) => callFn('saveReport', { report }),
-  getReport: (shareId) => callFn('getReport', { shareId })
+  getReport: (shareId) => callFn('getReport', { shareId }),
+  // 社会证明气泡：匿名记一条结果 / 拉近期结果
+  recordResult: (r) => callFn('recordResult', r),
+  recentResults: (n) => callFn('recentResults', { n })
 };

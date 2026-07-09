@@ -6,7 +6,7 @@
 // UI 换成单容器三态（console.js）+ 原型报告渲染（ui/report.js）。
 
 import { state, bus, resetState } from './state.js';
-import { api } from './api.js?v=6';
+import { api } from './api.js?v=10';
 
 import { runIp } from './modules/ip.js?v=7';
 import { runDns } from './modules/dns.js';
@@ -21,10 +21,10 @@ import {
 } from './engine/index.js';
 
 import { startScan, markScanRow, creepGauge, showReport, resetConsole } from './ui/console.js';
-import { renderReport } from './ui/report.js?v=9';
+import { renderReport } from './ui/report.js?v=10';
 import { mountSponsors } from './ui/sponsors.js';
 import { mountWechat, mountFaq, copyText } from './ui/wechat.js';
-import { mountLiveTicker } from './ui/liveticker.js?v=4';
+import { mountLiveTicker } from './ui/liveticker.js?v=10';
 
 const CFG = resolveConfig();
 
@@ -113,6 +113,12 @@ async function runAllModules() {
   const T = renderReport(document.getElementById('report'), payload);
   showReport(report.overall, T);
   running = false;
+
+  // 匿名记录本次结果（分数+档位+国家，不含 IP），喂给首页社会证明气泡。失败静默。
+  try {
+    const c = (state.results.ip && state.results.ip.country) || '';
+    api.recordResult({ score: report.overall, tier: report.tier, country: c });
+  } catch (_) {}
 }
 
 function buildPayloadForRender() {

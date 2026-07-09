@@ -48,8 +48,13 @@
 .ipc-src{font-size:10px;color:var(--ink-4);border:1px solid var(--line-2);border-radius:4px;padding:0 5px;line-height:15px}
 .ipc-pct{margin-left:auto;font-family:var(--mono);font-weight:700;font-size:20px}
 .ipc-pct .u{font-size:12px;color:var(--ink-3);margin-left:1px}
-.ipc-bar{height:7px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden}
-.ipc-bar span{display:block;height:100%;border-radius:99px;transition:width .7s cubic-bezier(.22,.61,.36,1)}
+/* 绿黄红渐变刻度尺 + 白点标记（ping0 风格：一眼看落在安全/危险区）*/
+.ipc-gauge{position:relative;height:8px;border-radius:99px;margin-top:2px;
+  background:linear-gradient(90deg,var(--bad) 0%,var(--warn) 50%,var(--good) 100%)}
+.ipc-marker{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;
+  background:#fff;border:2px solid var(--inset);transform:translate(-50%,-50%);
+  box-shadow:0 1px 5px rgba(0,0,0,.55);transition:left .8s cubic-bezier(.22,.61,.36,1)}
+.ipc-scale{display:flex;justify-content:space-between;font-size:9.5px;color:var(--ink-4);margin-top:5px;letter-spacing:.02em}
 /* 纯净度大白话判定（给小白一眼看懂）*/
 .ipc-verdict{display:flex;align-items:baseline;gap:8px;margin-top:8px}
 .ipc-vword{font-size:15px;font-weight:750}

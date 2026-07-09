@@ -43,8 +43,37 @@ function weightedTier() { let r = Math.random(), acc = 0; for (const t of TIERS)
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 const num = (n, color) => `<b class="lb-score" style="color:${color}">${n}</b>`;
 
-// 5 种参差句式，随机挑一种生成 { html, color }。
+// 真实近期结果（后端匿名记录：分数+档位+国家+时间，无 IP）。有就优先用真的。
+let realResults = [];
+async function fetchReal() {
+  try {
+    const r = await fetch('/api/recentResults', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ n: 24 }) });
+    const j = await r.json();
+    if (j && j.code === 0 && Array.isArray(j.results)) realResults = j.results.filter(x => x && typeof x.score === 'number');
+  } catch (_) { /* 拉不到就用假数据兜底 */ }
+}
+function tierByScore(s) { for (const t of TIERS) if (s >= t.min && s <= t.max) return t; return s >= 85 ? TIERS[0] : s >= 70 ? TIERS[1] : s >= 50 ? TIERS[2] : TIERS[3]; }
+function relTime(at) {
+  const m = Math.floor(Math.max(0, Date.now() - at) / 60000);
+  if (m < 1) return '刚刚';
+  if (m < 60) return m + ' 分钟前';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + ' 小时前';
+  return Math.floor(h / 24) + ' 天前';
+}
+
+// 5 种参差句式，随机挑一种生成 { html, color, time? }。
 function genBubble() {
+  // 有真实数据时，约 2/3 概率用真的一条（分数/时间为真，署名与句式仍随机以求参差）。
+  if (realResults.length && Math.random() < 0.66) {
+    const rr = realResults[Math.floor(Math.random() * realResults.length)];
+    const t = tierByScore(rr.score), sign = esc(pick(SIGNS)), time = relTime(rr.at);
+    const k = rnd(0, 2);
+    if (k === 0) return { html: `<b>${sign}</b> 测完了，${num(rr.score, t.color)} 分`, color: t.color, time };
+    if (k === 1) return { html: `<b>${sign}</b> 刚测，${num(rr.score, t.color)} 分，${esc(pick(t.react))}`, color: t.color, time };
+    return { html: `<b>${sign}</b>：${num(rr.score, t.color)} 分，${esc(pick(t.finds))}`, color: t.color, time };
+  }
+
   const sign = esc(pick(SIGNS));
   const kind = rnd(0, 4);
 
@@ -79,7 +108,7 @@ function render(el, b) {
   el.innerHTML =
     `<span class="lb-dot" style="background:${b.color}"></span>` +
     `<span class="lb-text">${b.html}</span>` +
-    `<span class="lb-time">${esc(pick(TIMES))}</span>`;
+    `<span class="lb-time">${esc(b.time || pick(TIMES))}</span>`;
 }
 
 const ROTATE_MS = 4200;
@@ -88,11 +117,14 @@ export function mountLiveTicker() {
   const el = document.getElementById('liveTicker');
   if (!el) return;
 
+  fetchReal();                              // 异步拉真实数据，来了下一轮就用上
   render(el, genBubble());
   el.classList.add('show');
 
+  let ticks = 0;
   setInterval(() => {
     if (document.hidden) return;            // 页面不可见时不折腾
+    if (++ticks % 30 === 0) fetchReal();    // 每 ~2 分钟刷新一次真实数据
     el.classList.remove('show');
     setTimeout(() => { render(el, genBubble()); el.classList.add('show'); }, 320);
   }, ROTATE_MS);
