@@ -50,9 +50,19 @@ function starsFrom(score) { return Math.max(0, Math.min(5, Math.round((score || 
 // TikTok 友好国家（与引擎白名单同口径的精简版）。
 const FRIENDLY_CC = ['US', 'JP', 'KR', 'GB', 'CA', 'AU', 'NZ', 'SG', 'TW', 'HK', 'MO', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'SE', 'NO', 'FI', 'DK', 'IE', 'CH', 'AT', 'TH', 'VN', 'PH', 'MY', 'ID', 'BR', 'MX'];
 
+// 纯净度→大白话判定词（给小白一眼看懂），比"风险评分 0/100"直观。
+function purityWord(p) {
+  return p >= 85 ? { t: '很干净', c: 'var(--good)' } : p >= 70 ? { t: '干净', c: 'var(--good)' }
+    : p >= 45 ? { t: '偏可疑', c: 'var(--warn)' } : { t: '高风险', c: 'var(--bad)' };
+}
+
 // 适用场景评分（借鉴 ping0）：不同场景对 IP 的要求不同，各给 0-5 星。
-// 以纯净度为基，按场景对 机房/代理/移动/国家 的敏感度做不同扣分。
+// 关键：这些场景都要"能访问国际服务"。若当前网络够不到国际（intlEchoFailed），
+// 无论 IP 本身多干净，实际都用不了 → 全部判 0 星，避免与顶部"高风险"自相矛盾。
 function scenarioScores(r) {
+  if (r.intlEchoFailed) {
+    return ['TikTok', '跨境电商', '社媒运营', 'AI 应用'].map(name => ({ name, stars: 0, blocked: true }));
+  }
   const pur = ipPurity(r).pct;
   const friendly = !!(r.country && FRIENDLY_CC.includes(String(r.country).toUpperCase()));
   const clamp = (x) => Math.max(0, Math.min(100, x));
@@ -76,15 +86,20 @@ function starRow(n, color) { return `<span class="ipc-stars" style="color:${colo
 
 function ipIdCardHtml(r, ipScore) {
   const pur = ipPurity(r), pcol = purityColor(pur.pct), tcol = ipTypeColor(r);
+  const pw = purityWord(pur.pct);
+  const blocked = !!r.intlEchoFailed;
   const scen = scenarioScores(r);
   const scenHtml = scen.map(x => {
-    const v = scenVerdict(x.stars);
+    const v = x.blocked ? { t: '不可用', c: 'var(--bad)' } : scenVerdict(x.stars);
     return `<div class="scen-card">
       <div class="scen-name">${x.name}</div>
       ${starRow(x.stars, v.c)}
       <div class="scen-badge" style="color:${v.c};border-color:${v.c}55;background:${v.c}14">${v.t}</div>
     </div>`;
   }).join('');
+  const scenSub = blocked
+    ? '<span class="ipc-scen-sub warn">当前网络无法访问国际，实际不可用</span>'
+    : '<span class="ipc-scen-sub">按 IP 质量估算</span>';
   return `<div class="ip-idcard">
     <div class="ipc-purity">
       <div class="ipc-top">
@@ -93,9 +108,10 @@ function ipIdCardHtml(r, ipScore) {
         <span class="ipc-pct" style="color:${pcol}">${pur.pct}<span class="u">%</span></span>
       </div>
       <div class="ipc-bar"><span style="width:${pur.pct}%;background:${pcol}"></span></div>
+      <div class="ipc-verdict"><span class="ipc-vword" style="color:${pw.c}">${pw.t}</span><span class="ipc-vsub">风险评分 ${typeof r.riskScore === 'number' ? r.riskScore : (100 - pur.pct)}/100 · 越低越好</span></div>
     </div>
     <div class="ipc-scen">
-      <div class="ipc-scen-t">适用场景 <span class="ipc-scen-sub">按 IP 质量估算</span></div>
+      <div class="ipc-scen-t">适用场景 ${scenSub}</div>
       <div class="scen-grid">${scenHtml}</div>
     </div>
   </div>`;
