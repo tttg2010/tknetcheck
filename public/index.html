@@ -77,7 +77,7 @@
 <!-- 资源版本号：改了 css/js 就 +1，绕过 CloudFlare 边缘缓存（index.html 本身不被 CF 缓存，改动即刻生效） -->
 <link rel="stylesheet" href="css/tokens.css?v=6">
 <link rel="stylesheet" href="css/base.css?v=6">
-<link rel="stylesheet" href="css/components.css?v=9">
+<link rel="stylesheet" href="css/components.css?v=12">
 <link rel="stylesheet" href="css/report.css?v=11">
 </head>
 <body>
@@ -137,6 +137,9 @@
         <span class="tdot"></span><span id="tierTxt"></span>
       </div>
     </div>
+
+    <!-- 访客外网 IP + 国家（进页面即显示，取自服务器 CF 侧） -->
+    <div class="visitor-ip" id="visitorIp" hidden></div>
 
     <!-- scan list (state B) -->
     <ol class="scanlist" id="scanList">
@@ -264,6 +267,6 @@
   </div>
 </div>
 
-<script type="module" src="app/app.js?v=9"></script>
+<script type="module" src="app/app.js?v=12"></script>
 </body>
 </html>

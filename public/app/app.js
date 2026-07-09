@@ -241,12 +241,34 @@ function stripForStorage(p) {
   return out;
 }
 
+// 访客一进页面就在综合评分下方显示"你的外网 IP + 国家"（取自后端 CF 侧，不依赖国际回显）。
+function ccFlag(cc) {
+  if (!cc || cc.length !== 2) return '🌐';
+  return String.fromCodePoint(...[...cc.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+}
+async function mountVisitorIp() {
+  const el = document.getElementById('visitorIp');
+  if (!el) return;
+  try {
+    const res = await api.ipinfo(null);          // 不传 IP，后端用 CF-Connecting-IP
+    const d = (res && (res.data || res)) || {};
+    if (!d.ip) return;
+    const cc = (d.country || '').toUpperCase();
+    const loc = d.countryName || cc;
+    const e = (s) => String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    el.innerHTML = `<span class="vip-k">你的外网 IP</span> <span class="vip-ip">${e(d.ip)}</span>` +
+      (loc ? ` <span class="vip-loc">· ${ccFlag(cc)} ${e(loc)}</span>` : '');
+    el.hidden = false;
+  } catch (_) { /* 静默，不影响主流程 */ }
+}
+
 // ── 引导 ────────────────────────────────────────────────────────
 function bootstrap() {
   const wx = mountWechat();
   mountFaq();
   mountSponsors({ onEmptyClick: wx && wx.open });
   mountLiveTicker();
+  mountVisitorIp();
 
   document.getElementById('btnStart').onclick = start;
   document.getElementById('btnCancel').onclick = cancel;
