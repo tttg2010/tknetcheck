@@ -57,13 +57,30 @@ function purityWord(p) {
     : p >= 45 ? { t: '偏可疑', c: 'var(--warn)' } : { t: '高风险', c: 'var(--bad)' };
 }
 
-// 适用场景评分（借鉴 ping0）：不同场景对 IP 的要求不同，各给 0-5 星。
-// 说明：intlEchoFailed（浏览器直连回显失败）不代表上不了国际——只要拿到了外国 IP，
-// 就按 IP 质量正常评分。真正上不了国际的情形（拿不到任何 IP）走 restricted 分支。
-function scenarioScores(r) {
+const SCEN_NAMES = ['TikTok', '跨境电商', '社媒运营', 'AI 应用'];
+
+// 环境闸门：从 DNS/可达性/稳定性判断"这网络到底能不能真连上国际服务"。
+// 这是真实检测信号（不是 intlEchoFailed 那种浏览器回显假信号）。
+function envGate(rep) {
+  const R = (rep && rep.results) || {};
+  const dns = R.dns, reach = R.reachability, st = R.stability;
+  const dnsBlocked = !!(dns && dns.ok && dns.googleReachable === false && dns.cloudflareReachable === false);
+  const tkUnreachable = !!(reach && reach.ok && reach.successes === 0);
+  const highLoss = !!(st && st.ok && st.overall && st.overall.loss > 5);
+  return { dnsBlocked, tkUnreachable, highLoss };
+}
+
+// 适用场景评分（借鉴 ping0）= IP 质量 × 环境可达性。
+// IP 再干净，若 DNS 被全过滤 / TikTok 不可达，实际也用不了 → 判不可用，避免与顶部提醒矛盾。
+function scenarioScores(r, rep) {
+  const g = envGate(rep);
+  // DNS 全过滤 = 连域名都解析不了，所有国际服务实际不可用。
+  if (g.dnsBlocked) return SCEN_NAMES.map(name => ({ name, stars: 0, blocked: true }));
+
   const pur = ipPurity(r).pct;
   const friendly = !!(r.country && FRIENDLY_CC.includes(String(r.country).toUpperCase()));
-  const clamp = (x) => Math.max(0, Math.min(100, x));
+  const loss = g.highLoss ? 20 : 0;              // 高丢包全场景降级
+  const clamp = (x) => Math.max(0, Math.min(100, x - loss));
   // TikTok：最严——要住宅 + 友好国家，机房/代理是大忌
   let tk = pur; if (r.isHosting) tk -= 45; else if (r.isProxy) tk -= 30; else if (r.isMobile) tk -= 8; if (!friendly) tk -= 18;
   // 跨境电商：干净即可，对机房宽容些，代理仍扣
@@ -72,6 +89,8 @@ function scenarioScores(r) {
   let sm = pur; if (r.isHosting) sm -= 38; else if (r.isProxy) sm -= 30; else if (r.isMobile) sm -= 5;
   // AI 应用：最恨代理/VPN（AI 服务爱封代理），干净机房反而可用
   let ai = pur; if (r.isProxy) ai -= 40; else if (r.isHosting) ai -= 8; else if (r.isResidential) ai += 3;
+  // TikTok 域名不可达 → TikTok/社媒 实际用不了（跨境/AI 不依赖 TikTok，不封）
+  if (g.tkUnreachable) { tk = Math.min(tk, 15); sm = Math.min(sm, 15); }
   return [
     { name: 'TikTok', stars: starsFrom(clamp(tk)) },
     { name: '跨境电商', stars: starsFrom(clamp(ec)) },
@@ -82,21 +101,25 @@ function scenarioScores(r) {
 function scenVerdict(stars) { return stars >= 3 ? { t: '适合', c: 'var(--good)' } : stars >= 2 ? { t: '谨慎', c: 'var(--warn)' } : { t: '不适合', c: 'var(--bad)' }; }
 function starRow(n, color) { return `<span class="ipc-stars" style="color:${color}">${Array.from({ length: 5 }, (_, i) => `<span class="st${i < n ? ' on' : ''}">★</span>`).join('')}</span>`; }
 
-function ipIdCardHtml(r, ipScore) {
+function ipIdCardHtml(r, ipScore, rep) {
   const pur = ipPurity(r), tcol = ipTypeColor(r);
   const risk = typeof r.riskScore === 'number' ? r.riskScore : (100 - pur.pct);
   const rcol = riskColor(risk);
   const rw = purityWord(100 - risk);          // 判词按 纯净度=100-风险
-  const scen = scenarioScores(r);
+  const g = envGate(rep);
+  const scen = scenarioScores(r, rep);
   const scenHtml = scen.map(x => {
-    const v = scenVerdict(x.stars);
+    const v = x.blocked ? { t: '不可用', c: 'var(--bad)' } : scenVerdict(x.stars);
     return `<div class="scen-card">
       <div class="scen-name">${x.name}</div>
       ${starRow(x.stars, v.c)}
       <div class="scen-badge" style="color:${v.c};border-color:${v.c}55;background:${v.c}14">${v.t}</div>
     </div>`;
   }).join('');
-  const scenSub = '<span class="ipc-scen-sub">按 IP 质量估算</span>';
+  const scenSub = g.dnsBlocked ? '<span class="ipc-scen-sub warn">DNS 被过滤，国际服务实际不可用</span>'
+    : g.tkUnreachable ? '<span class="ipc-scen-sub warn">TikTok 域名不可达，实际受限</span>'
+    : g.highLoss ? '<span class="ipc-scen-sub warn">丢包过高，已按线路质量降级</span>'
+    : '<span class="ipc-scen-sub">按 IP 质量 + 环境可达性估算</span>';
   return `<div class="ip-idcard">
     <div class="ipc-risk">
       <div class="ipc-risk-head">
@@ -162,7 +185,7 @@ function buildModules(rep) {
     M.push({
       key: 'ip', ic: '🌐', nm: 'IP 身份', score: S.ip || 0,
       sum: `${esc(r.city || '?')} · ${ipType(r)} · 纯净度 ${pur.pct}%`,
-      topHtml: ipIdCardHtml(r, S.ip || 0),
+      topHtml: ipIdCardHtml(r, S.ip || 0, rep),
       findings: f,
       kv: [['IP 类型', ipType(r)], ['公网 IP', esc(r.ip || '?')], ['国家 / 地区', `${esc(r.country || '?')} · ${esc(r.region || '?')}`], ['ASN', esc(r.asn || '?')], ['住宅 IP', r.isResidential ? '是' : '否']]
     });
