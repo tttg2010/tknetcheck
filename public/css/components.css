@@ -135,6 +135,11 @@
 .stat-strip b{color:var(--ink-2);font-family:var(--mono);font-weight:600}
 .tip{color:var(--ink-3);font-size:12px;text-align:center;max-width:320px}
 .tip b{color:var(--ink-2)}
+/* 强提示：必须开代理测 */
+.tip-warn{max-width:360px;text-align:center;display:flex;flex-direction:column;gap:3px;
+  padding:9px 14px;border:1px solid rgba(247,182,75,.32);background:rgba(247,182,75,.09);border-radius:var(--r-sm)}
+.tip-warn b{color:var(--warn);font-size:13px;font-weight:650;line-height:1.4}
+.tip-warn span{color:var(--ink-3);font-size:11.5px;line-height:1.5}
 .consent{color:var(--ink-4);font-size:11px}
 .consent a{color:var(--ink-3);text-decoration:underline;text-underline-offset:2px}
 

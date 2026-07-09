@@ -77,7 +77,7 @@
 <!-- 资源版本号：改了 css/js 就 +1，绕过 CloudFlare 边缘缓存（index.html 本身不被 CF 缓存，改动即刻生效） -->
 <link rel="stylesheet" href="css/tokens.css?v=6">
 <link rel="stylesheet" href="css/base.css?v=6">
-<link rel="stylesheet" href="css/components.css?v=6">
+<link rel="stylesheet" href="css/components.css?v=9">
 <link rel="stylesheet" href="css/report.css?v=9">
 </head>
 <body>
@@ -151,8 +151,11 @@
     <!-- CTA zone (state A) -->
     <div class="cta-zone" id="ctaZone">
       <button class="btn-primary" id="btnStart">开始检测 · 30 秒出报告</button>
+      <div class="tip-warn">
+        <b>⚠️ 必须开着你平时发 TikTok 的代理 / VPN 测</b>
+        <span>没开代理，测的只是你本机网络，结果不准；要用真正发视频的那台手机、那个网络。</span>
+      </div>
       <div class="stat-strip"><span><b>6</b> 项诊断</span><span><b>~30</b> 秒</span><span><b>0–100</b> 分</span></div>
-      <p class="tip">请用<b>需要检测的那台手机</b>、连<b>需要检测的那个网络</b>打开</p>
       <p class="consent">点击开始即表示同意 <a href="#faq">隐私声明</a></p>
     </div>
 
