@@ -6,7 +6,7 @@
 // UI 换成单容器三态（console.js）+ 原型报告渲染（ui/report.js）。
 
 import { state, bus, resetState } from './state.js';
-import { api } from './api.js?v=3';
+import { api } from './api.js?v=6';
 
 import { runIp } from './modules/ip.js';
 import { runDns } from './modules/dns.js';

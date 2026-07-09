@@ -18,7 +18,8 @@ export async function callFn(name, data = {}) {
       body: JSON.stringify(data)
     });
   } catch (e) {
-    throw new Error(`网络错误：无法连接云函数 ${name}（${(e && e.message) || e}）`);
+    // 把实际请求地址写进报错，方便一眼判断是新码(/api)还是旧缓存(tcloudbase)。
+    throw new Error(`无法连接后端 ${HTTP_BASE}/${name}（${(e && e.message) || e}）`);
   }
   if (!r.ok) {
     throw new Error(`云函数 ${name} 返回 HTTP ${r.status}`);

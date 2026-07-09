@@ -74,7 +74,7 @@ export function buildRecommendations(results, scores, config) {
     push({
       severity: 'warn',
       title: 'IP 信息查询失败',
-      body: 'IP 信息查询失败，可能是网络问题或云函数 quota 超限。请稍后重试。'
+      body: '无法连接检测后端。若你刚更新过页面，多半是浏览器缓存了旧版本——请强制刷新（手机可在网址末尾加 ?2 打开）或清一下站点缓存后重试。'
     });
   }
   }
