@@ -45,19 +45,58 @@ function ipPurity(r) {
 }
 function purityColor(p) { return p >= 70 ? 'var(--good)' : p >= 45 ? 'var(--warn)' : 'var(--bad)'; }
 function ipTypeColor(r) { return r.isHosting ? 'var(--bad)' : (r.isProxy || r.isMobile) ? 'var(--warn)' : r.isResidential ? 'var(--good)' : 'var(--ink-3)'; }
-function ipStars(score) { return Math.max(0, Math.min(5, Math.round((score || 0) / 20))); }
+function starsFrom(score) { return Math.max(0, Math.min(5, Math.round((score || 0) / 20))); }
+
+// TikTok 友好国家（与引擎白名单同口径的精简版）。
+const FRIENDLY_CC = ['US', 'JP', 'KR', 'GB', 'CA', 'AU', 'NZ', 'SG', 'TW', 'HK', 'MO', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'SE', 'NO', 'FI', 'DK', 'IE', 'CH', 'AT', 'TH', 'VN', 'PH', 'MY', 'ID', 'BR', 'MX'];
+
+// 适用场景评分（借鉴 ping0）：不同场景对 IP 的要求不同，各给 0-5 星。
+// 以纯净度为基，按场景对 机房/代理/移动/国家 的敏感度做不同扣分。
+function scenarioScores(r) {
+  const pur = ipPurity(r).pct;
+  const friendly = !!(r.country && FRIENDLY_CC.includes(String(r.country).toUpperCase()));
+  const clamp = (x) => Math.max(0, Math.min(100, x));
+  // TikTok：最严——要住宅 + 友好国家，机房/代理是大忌
+  let tk = pur; if (r.isHosting) tk -= 45; else if (r.isProxy) tk -= 30; else if (r.isMobile) tk -= 8; if (!friendly) tk -= 18;
+  // 跨境电商：干净即可，对机房宽容些，代理仍扣
+  let ec = pur; if (r.isHosting) ec -= 22; else if (r.isProxy) ec -= 28;
+  // 社媒运营：接近 TikTok，国家略宽松
+  let sm = pur; if (r.isHosting) sm -= 38; else if (r.isProxy) sm -= 30; else if (r.isMobile) sm -= 5;
+  // AI 应用：最恨代理/VPN（AI 服务爱封代理），干净机房反而可用
+  let ai = pur; if (r.isProxy) ai -= 40; else if (r.isHosting) ai -= 8; else if (r.isResidential) ai += 3;
+  return [
+    { name: 'TikTok', stars: starsFrom(clamp(tk)) },
+    { name: '跨境电商', stars: starsFrom(clamp(ec)) },
+    { name: '社媒运营', stars: starsFrom(clamp(sm)) },
+    { name: 'AI 应用', stars: starsFrom(clamp(ai)) }
+  ];
+}
+function scenVerdict(stars) { return stars >= 3 ? { t: '适合', c: 'var(--good)' } : stars >= 2 ? { t: '谨慎', c: 'var(--warn)' } : { t: '不适合', c: 'var(--bad)' }; }
+function starRow(n, color) { return `<span class="ipc-stars" style="color:${color}">${Array.from({ length: 5 }, (_, i) => `<span class="st${i < n ? ' on' : ''}">★</span>`).join('')}</span>`; }
+
 function ipIdCardHtml(r, ipScore) {
   const pur = ipPurity(r), pcol = purityColor(pur.pct), tcol = ipTypeColor(r);
-  const n = ipStars(ipScore);
-  const stars = Array.from({ length: 5 }, (_, i) => `<span class="st${i < n ? ' on' : ''}">★</span>`).join('');
+  const scen = scenarioScores(r);
+  const scenHtml = scen.map(x => {
+    const v = scenVerdict(x.stars);
+    return `<div class="scen-card">
+      <div class="scen-name">${x.name}</div>
+      ${starRow(x.stars, v.c)}
+      <div class="scen-badge" style="color:${v.c};border-color:${v.c}55;background:${v.c}14">${v.t}</div>
+    </div>`;
+  }).join('');
   return `<div class="ip-idcard">
     <div class="ipc-purity">
-      <div class="ipc-top"><span class="ipc-k">IP 纯净度</span><span class="ipc-src">${pur.src}</span><span class="ipc-pct" style="color:${pcol}">${pur.pct}%</span></div>
+      <div class="ipc-top">
+        <span class="ipc-k">IP 纯净度</span><span class="ipc-src">${pur.src}</span>
+        <span class="ipc-pill" style="color:${tcol};border-color:${tcol}55;background:${tcol}14">${ipType(r)}</span>
+        <span class="ipc-pct" style="color:${pcol}">${pur.pct}<span class="u">%</span></span>
+      </div>
       <div class="ipc-bar"><span style="width:${pur.pct}%;background:${pcol}"></span></div>
     </div>
-    <div class="ipc-grid">
-      <div class="ipc-cell"><span class="ipc-k">TikTok 适用度</span><span class="ipc-stars" style="color:${scoreColor(ipScore || 0)}">${stars}</span></div>
-      <div class="ipc-cell"><span class="ipc-k">IP 类型</span><span class="ipc-pill" style="color:${tcol};border-color:${tcol}55;background:${tcol}14">${ipType(r)}</span></div>
+    <div class="ipc-scen">
+      <div class="ipc-scen-t">适用场景 <span class="ipc-scen-sub">按 IP 质量估算</span></div>
+      <div class="scen-grid">${scenHtml}</div>
     </div>
   </div>`;
 }
